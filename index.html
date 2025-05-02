@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Runner Denis</title>
+    <!-- Preload loader background for faster initial render -->
+    <link rel="preload" href="assets/splash_screen.png" as="image">
     <style>
         body { margin: 0; overflow: hidden; background: transparent; }
         #gameCanvas { display: block; margin: 0 auto; }
@@ -11,12 +13,14 @@
           image-rendering: pixelated;
           image-rendering: crisp-edges;
         }
+        #loaderOverlay {
+          background: url('assets/splash_screen.png') no-repeat center center;
+          background-size: cover;
+        }
     </style>
 </head>
 <body>
 <div id="loaderOverlay" style="position:absolute;top:0;left:0;width:800px;height:400px;
-    background: url('assets/splash_screen.png') no-repeat center center;
-    background-size: cover;
     display:flex;align-items:center;justify-content:center;z-index:10;">
     <div id="loaderContainer" style="position:relative;width:600px;height:20px;background:#444;border:2px solid #fff;overflow:hidden;">
         <div id="loaderBar" style="background:#0f0;width:0%;height:100%;"></div>
