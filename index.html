@@ -7,6 +7,10 @@
     <style>
         body { margin: 0; overflow: hidden; background: transparent; }
         #gameCanvas { display: block; margin: 0 auto; }
+        #gameCanvas, #uiCanvas {
+          image-rendering: pixelated;
+          image-rendering: crisp-edges;
+        }
     </style>
 </head>
 <body>
@@ -14,31 +18,50 @@
     background: url('assets/splash_screen.png') no-repeat center center;
     background-size: cover;
     display:flex;align-items:center;justify-content:center;z-index:10;">
-  <div id="loaderContainer" style="position:relative;width:600px;height:20px;background:#444;border:2px solid #fff;overflow:hidden;">
-    <div id="loaderBar" style="background:#0f0;width:0%;height:100%;"></div>
-    <img id="loaderCar" src="assets/denis_runner.png" style="position:absolute;top:-10px;left:0;width:80px;height:40px;"/>
-    <img id="loaderServiceIcon" src="assets/service.png" style="position:absolute;top:-10px;right:-75px;width:75px;height:120px;"/>
-  </div>
+    <div id="loaderContainer" style="position:relative;width:600px;height:20px;background:#444;border:2px solid #fff;overflow:hidden;">
+        <div id="loaderBar" style="background:#0f0;width:0%;height:100%;"></div>
+        <img id="loaderCar" src="assets/denis_runner.png" style="position:absolute;top:-10px;left:0;width:80px;height:40px;"/>
+        <img id="loaderServiceIcon" src="assets/service.png" style="position:absolute;top:-10px;right:-75px;width:75px;height:120px;"/>
+    </div>
 </div>
 <div id="gameWrapper" style="">
-  <div id="canvasContainer" style="position: relative; width: 800px; margin: 0 auto;">
-    <canvas id="gameCanvas" width="800" height="400" style="position: absolute; top:0; left:0;"></canvas>
-    <canvas id="uiCanvas"   width="800" height="400" style="position: absolute; top:0; left:0; pointer-events: none;"></canvas>
-  </div>
+    <div id="canvasContainer" style="position: relative; width: 800px; margin: 0 auto;">
+        <canvas id="gameCanvas" width="800" height="400" style="position: absolute; top:0; left:0;"></canvas>
+        <canvas id="uiCanvas"   width="800" height="400" style="position: absolute; top:0; left:0; pointer-events: none;"></canvas>
+        <div id="uiOverlay" style="position:absolute;top:0;left:0;width:800px;height:400px;pointer-events:auto;">
+          <div id="scoreDisplay" style="position:absolute;top:10px;left:10px;font:24px Arial;color:white;text-shadow:1px 1px 2px black;">Score: 0</div>
+          <div id="bestDisplay"  style="position:absolute;top:10px;right:10px;font:24px Arial;color:white;text-shadow:1px 1px 2px black;">Best: 0</div>
+          <div id="killDisplay"  style="position:absolute;top:40px;left:10px;font:24px Arial;color:lime;text-shadow:1px 1px 2px black;">Квадрокоптеров сбито: 0</div>
+          <div id="gameOverScreen" style="display:none;position:absolute;top:0;left:0;width:800px;height:400px;pointer-events:auto;
+            background:url('assets/game_over_screen.png') no-repeat center center;background-size:cover;">
+            <div id="goScore"      style="position:absolute;top:120px;left:50%;transform:translateX(-50%);font:24px Arial;color:white;text-shadow:1px 1px 2px black;">Ваш счет: 0</div>
+            <div id="goBest"       style="position:absolute;top:160px;left:50%;transform:translateX(-50%);font:24px Arial;color:white;text-shadow:1px 1px 2px black;">BEST: 0</div>
+            <div id="goPayments"   style="position:absolute;top:200px;left:50%;transform:translateX(-50%);font:24px Arial;color:white;text-shadow:1px 1px 2px black;text-align:center;"></div>
+            <button id="goRestart" style="position:absolute;bottom:80px;left:50%;transform:translateX(-50%);width:200px;height:50px;font:20px Arial;">Начать заново</button>
+            <div               style="position:absolute;bottom:30px;left:50%;transform:translateX(-50%);font:16px Arial;color:white;text-shadow:1px 1px 2px black;">or press Enter</div>
+          </div>
+        </div>
+    </div>
 </div>
 <script>
     const gameCanvas = document.getElementById('gameCanvas');
     const ctx        = gameCanvas.getContext('2d');
     const uiCanvas   = document.getElementById('uiCanvas');
     const uiCtx      = uiCanvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    uiCtx.imageSmoothingEnabled = false;
     const canvas = gameCanvas;
     let gameStarted = false;
     let coins = [];
     let popups = [];
     let isGameOver = false;
-    const coinSpawnInterval = 150;
+    const coinSpawnInterval = 200;
     const coinMinY = 50;
     const coinMaxY = 200;
+    // Obstacle spawn timing variables
+    let nextObstacleFrame = 0;
+    const minObstacleInterval = 120;
+    const maxObstacleInterval = 200;
 
     // Countdown state variables
     let countdown = 3;
@@ -53,13 +76,16 @@
     const inspectorImg = new Image(); inspectorImg.src = 'assets/inspector.png';
     const coinImg = new Image(); coinImg.src = 'assets/coin.png';
     const sfxLoad = new Audio('assets/load.mp3');
+    // Quadcopter obstacles
+    const quadro     = new Image(); quadro.src = 'assets/quadro.png';
+    const quadro1    = new Image(); quadro1.src = 'assets/quadro1.png'; // glowing/failing quadcopter
 
     const bgMusic      = new Audio('assets/bgMusic.mp3');
     bgMusic.loop = true;
     bgMusic.volume = 0.6;
     const sfxStart      = new Audio('assets/start.mp3');
     const sfxInspector  = new Audio('assets/inspector_sfx.mp3');
-    const sfxService    = new Audio('assets/service_sfx.mp3');
+    const sfxService    = new Audio('assets/service.mp3');
     const sfxCheck      = new Audio('assets/check_sfx.mp3');
     const sfxDeath      = new Audio('assets/death_sfx.mp3');
 
@@ -68,6 +94,7 @@
 
     // Game state
     let score = 0;
+    let bestScore = 0;
     ctx.font = '24px Arial';
     ctx.fillStyle = '#FFF';
 
@@ -76,7 +103,9 @@
 
 
     // Runner settings
-    const runner = { x: 35, y: 315, width: 160, height: 80, vy: 0, gravity: 0.8, jumpPower: -25 };
+    const runner = { x: 35, y: 315, width: 160, height: 80, vy: 0, gravity: 0.3 , jumpPower: -17 };
+    // Fixed ground level for obstacles
+    const groundY = runner.y + runner.height; // fixed ground level (395)
 
     // Chrome Dino-style jump charging state
     let isCharging = false;
@@ -85,56 +114,82 @@
 
     // World parameters
     let bgX = 0;
-    let speed = 6;
-    let frameCount = 0;
+    let speed = 2.5;
+let frameCount = 0;
+let distanceTravelled = 0;
+let killedQuadCount = 0;
     const obstacles = [];
 
-    // Simple jump on space/arrow up, and reset on game over
+    // Simple jump on space/arrow up and restart with Enter (handle both .code and .key; preventDefault to ensure event is captured)
     window.addEventListener('keydown', e => {
-      if (isGameOver && (e.code === 'Space' || e.code === 'ArrowUp')) {
-        resetGame();
-        return;
-      }
-      if ((e.code === 'Space' || e.code === 'ArrowUp') && runner.y === 315 && !isGameOver) {
-        gameStarted = true;
-        runner.vy = runner.jumpPower;
-      }
+        // Jump
+        if (
+            (e.code === 'Space' || e.key === ' ' || e.code === 'ArrowUp' || e.key === 'ArrowUp') &&
+            runner.y === 315 && !isGameOver
+        ) {
+            e.preventDefault();
+            gameStarted = true;
+            runner.vy = runner.jumpPower;
+        }
+        // Restart on Enter
+        if (isGameOver && (e.code === 'Enter' || e.key === 'Enter')) {
+            e.preventDefault();
+            resetGame();
+        }
     });
 
     function spawnObstacle() {
-      const r = Math.random();
-      if (r < 0.25) {
-        // Pit
-        const w = 60, h = 60;
-        const y = runner.y + runner.height;
-        obstacles.push({ x: canvas.width, y, width: w, height: h, img: pit, counted: false, type: 'pit' });
-      } else if (r < 0.5) {
-        // Service
-        const w = 75, h = 120;
-        const y = runner.y + runner.height - h;
-        obstacles.push({ x: canvas.width, y, width: w, height: h, img: service, counted: false, type: 'service' });
-      } else if (r < 0.75) {
-        // Check Engine
-        const w = 60, h = 60;
-        const y = runner.y + runner.height - h;
-        obstacles.push({ x: canvas.width, y, width: w, height: h, img: checkImg, counted: false, type: 'check' });
-      } else {
-        // Inspector
-        const w = 50, h = 80;
-        const y = runner.y + runner.height - h;
-        obstacles.push({ x: canvas.width, y, width: w, height: h, img: inspectorImg, counted: false, type: 'inspector' });
-      }
+        const skyLimit = 0; // y < skyLimit = above visible sky
+        const r = Math.random();
+        // 10% chance to spawn a quadro in the sky
+        if (r < 0.10) {
+            const w = 100, h = 60;
+            // Always use sky spawn Y for quadro
+            const y = Math.random() * (coinMinY - 50) + 20; // high in sky
+            obstacles.push({ x: canvas.width, y, width: w, height: h, img: quadro, counted: false, type: 'quadro' });
+            return;
+        }
+        // otherwise existing obstacle logic...
+        if (r < 0.25) {
+            // Pit
+            const w = 60, h = 60;
+            const y = groundY - h;
+            obstacles.push({ x: canvas.width, y, width: w, height: h, img: pit, counted: false, type: 'pit' });
+        } else if (r < 0.5) {
+            // Service
+            const w = 75, h = 120;
+            const y = groundY - h;
+            obstacles.push({ x: canvas.width, y, width: w, height: h, img: service, counted: false, type: 'service' });
+        } else if (r < 0.75) {
+            // Check Engine
+            const w = 60, h = 60;
+            const y = groundY - h;
+            obstacles.push({ x: canvas.width, y, width: w, height: h, img: checkImg, counted: false, type: 'check' });
+        } else {
+            // Inspector
+            const w = 50, h = 80;
+            const y = groundY - h;
+            obstacles.push({ x: canvas.width, y, width: w, height: h, img: inspectorImg, counted: false, type: 'inspector' });
+        }
     }
 
     function spawnCoin() {
-      const w = 100, h = 100;
-      const y = Math.random() * (coinMaxY - coinMinY) + coinMinY;
-      coins.push({ x: canvas.width, y, width: w, height: h, img: coinImg, type: 'coin' });
+        const w = 100, h = 100;
+        const isGround = Math.random() < 0.2; // 20% on ground
+        const y = isGround ? (runner.y + runner.height - 20) : Math.random() * (coinMaxY - coinMinY) + coinMinY;
+        coins.push({ x: canvas.width, y, width: w, height: h, img: coinImg, type: 'coin' });
     }
 
     function update() {
         if (isGameOver) return;
         frameCount++;
+        // Award 1 point per 10 pixels moved
+        distanceTravelled += speed;
+        while (distanceTravelled >= 10) {
+          distanceTravelled -= 10;
+          score++;
+          document.getElementById('scoreDisplay').innerText = 'Score: ' + score;
+        }
         // Scroll background
         bgX -= speed;
         if (bgX <= -bg.width) bgX = 0;
@@ -144,46 +199,71 @@
         runner.y = Math.min(runner.y + runner.vy, 315);
 
         // Spawn obstacles
-        if (frameCount % 140 === 0) spawnObstacle();
+        if (frameCount >= nextObstacleFrame) {
+            spawnObstacle();
+            // schedule next spawn at random frame interval
+            nextObstacleFrame = frameCount + Math.floor(Math.random() * (maxObstacleInterval - minObstacleInterval)) + minObstacleInterval;
+        }
         if (frameCount % coinSpawnInterval === 0) spawnCoin();
 
         // Move obstacles and detect collisions
         for (let i = obstacles.length - 1; i >= 0; i--) {
             const o = obstacles[i];
             o.x -= speed;
-            // Check collision
+            // Shrink obstacle hitbox
+            const hitMargin = 10;
+            // Check collision with margin
             if (
-                runner.x < o.x + o.width &&
-                runner.x + runner.width > o.x &&
-                runner.y < o.y + o.height &&
-                runner.y + runner.height > o.y
+                runner.x < o.x + o.width - hitMargin &&
+                runner.x + runner.width > o.x + hitMargin &&
+                runner.y < o.y + o.height - hitMargin &&
+                runner.y + runner.height > o.y + hitMargin
             ) {
+                if (o.type === 'quadro') {
+                    // Award 50 points, update killedQuadCount, update DOM, start fall animation, return
+                    score += 50;
+                    document.getElementById('scoreDisplay').innerText = 'Score: ' + score;
+                    killedQuadCount++;
+                    document.getElementById('killDisplay').innerText = 'Квадрокоптеров сбито: ' + killedQuadCount;
+                    o.img = quadro1;
+                    o.type = 'quadro_fall';
+                    o.falling = true;
+                    return;
+                }
                 if (o.type === 'pit' || o.type === 'check') {
-                  sfxDeath.play().catch(() => {});
-                  bgMusic.pause();
-                  isGameOver = true;
+                    if (score > bestScore) bestScore = score;
+                    document.getElementById('bestDisplay').innerText = 'Best: ' + bestScore;
+                    sfxDeath.play().catch(() => {});
+                    bgMusic.pause();
+                    isGameOver = true;
                 } else if (o.type === 'inspector') {
-                  if (score >= 50) {
-                    totalInspectorPaid += 50;
-                    score -= 50;
-                    popups.push({ x: runner.x, y: runner.y, text: '-50', color: 'red', alpha: 1 });
-                    sfxInspector.play().catch(() => {});
-                  } else {
-                    sfxDeath.play().catch(() => {});
-                    bgMusic.pause();
-                    isGameOver = true;
-                  }
+                    if (score >= 50) {
+                        totalInspectorPaid += 50;
+                        score -= 50;
+                        document.getElementById('scoreDisplay').innerText = 'Score: ' + score;
+                        popups.push({ x: runner.x, y: runner.y, text: '-50', color: 'red', alpha: 1 });
+                        sfxInspector.play().catch(() => {});
+                    } else {
+                        if (score > bestScore) bestScore = score;
+                        document.getElementById('bestDisplay').innerText = 'Best: ' + bestScore;
+                        sfxDeath.play().catch(() => {});
+                        bgMusic.pause();
+                        isGameOver = true;
+                    }
                 } else if (o.type === 'service') {
-                  if (score >= 100) {
-                    totalServicePaid += 100;
-                    score -= 100;
-                    popups.push({ x: runner.x, y: runner.y, text: '-100', color: 'red', alpha: 1 });
-                    sfxService.play().catch(() => {});
-                  } else {
-                    sfxDeath.play().catch(() => {});
-                    bgMusic.pause();
-                    isGameOver = true;
-                  }
+                    if (score >= 100) {
+                        totalServicePaid += 100;
+                        score -= 100;
+                        document.getElementById('scoreDisplay').innerText = 'Score: ' + score;
+                        popups.push({ x: runner.x, y: runner.y, text: '-100', color: 'red', alpha: 1 });
+                        sfxService.play().catch(() => {});
+                    } else {
+                        if (score > bestScore) bestScore = score;
+                        document.getElementById('bestDisplay').innerText = 'Best: ' + bestScore;
+                        sfxDeath.play().catch(() => {});
+                        bgMusic.pause();
+                        isGameOver = true;
+                    }
                 }
                 o.counted = true;
                 obstacles.splice(i, 1);
@@ -192,131 +272,82 @@
             // Count score when obstacle passed
             if (o.x + o.width < runner.x && !o.counted) {
                 score++;
+                document.getElementById('scoreDisplay').innerText = 'Score: ' + score;
                 o.counted = true;
             }
             // Remove off-screen
             if (o.x + o.width < 0) obstacles.splice(i, 1);
         }
         for (let i = coins.length - 1; i >= 0; i--) {
-          const c = coins[i];
-          c.x -= speed;
-          if (
-            runner.x < c.x + c.width &&
-            runner.x + runner.width > c.x &&
-            runner.y < c.y + c.height &&
-            runner.y + runner.height > c.y
-          ) {
-            score += 25;
-            popups.push({ x: runner.x, y: runner.y, text: '+25', color: 'green', alpha: 1 });
-            coins.splice(i, 1);
-            continue;
-          }
-          if (c.x + c.width < 0) coins.splice(i, 1);
+            const c = coins[i];
+            c.x -= speed;
+            if (
+                runner.x < c.x + c.width &&
+                runner.x + runner.width > c.x &&
+                runner.y < c.y + c.height &&
+                runner.y + runner.height > c.y
+            ) {
+                score += 25;
+                document.getElementById('scoreDisplay').innerText = 'Score: ' + score;
+                popups.push({ x: runner.x, y: runner.y, text: '+25', color: 'green', alpha: 1 });
+                coins.splice(i, 1);
+                continue;
+            }
+            if (c.x + c.width < 0) coins.splice(i, 1);
         }
-        // Gradually increase game speed even more slowly
-        speed += 0.001 / 1.5;
+        // Slight acceleration per frame (optional)
+        if (gameStarted) {
+            speed += 0.00002;
+        }
+
+        // Handle falling quads
+        obstacles.forEach((o, idx) => {
+          if (o.type === 'quadro_fall' && o.falling) {
+            o.y += 5; // fall speed
+            if (o.y + o.height >= runner.y + runner.height) {
+              // reached ground, stop and remove
+              obstacles.splice(idx, 1);
+            }
+          }
+        });
     }
 
     function draw() {
         if (countdownActive) {
-          // draw current frame (background and runner at rest)
-          ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
-          uiCtx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
-          // draw static background and runner without motion
-          ctx.drawImage(bg, 0, 0, bg.width, bg.height, 0, 0, gameCanvas.width, gameCanvas.height);
-          ctx.drawImage(denisImg, runner.x, runner.y, runner.width, runner.height);
-          // draw countdown number
-          uiCtx.fillStyle = 'white';
-          uiCtx.textAlign = 'center';
-          uiCtx.font = '72px Arial';
-          uiCtx.fillText(countdown, gameCanvas.width/2, gameCanvas.height/2);
-          requestAnimationFrame(draw);
-          return;
+            // draw current frame (background and runner at rest)
+            ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+            uiCtx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
+            // draw static background and runner without motion
+            ctx.drawImage(bg, 0, 0, bg.width, bg.height, 0, 0, gameCanvas.width, gameCanvas.height);
+            ctx.drawImage(denisImg, runner.x, runner.y, runner.width, runner.height);
+            // draw countdown number
+            uiCtx.fillStyle = 'white';
+            uiCtx.textAlign = 'center';
+            uiCtx.font = '72px Arial';
+            uiCtx.fillText(countdown, gameCanvas.width/2, gameCanvas.height/2);
+            requestAnimationFrame(draw);
+            return;
         }
-        // reset filters and clear both layers
+
+        if (isGameOver) {
+            // Show HTML Game Over overlay
+            document.getElementById('gameOverScreen').style.display = 'block';
+            document.getElementById('goScore').innerText = 'Ваш счет: ' + score;
+            document.getElementById('goBest').innerText = 'BEST: ' + bestScore;
+            // Build payments text with red coloring for amounts
+            const lines = [];
+            if (totalServicePaid > 0) lines.push('В сервисе заплатили: <span style="color:red">-' + totalServicePaid + '</span>');
+            if (totalInspectorPaid > 0) lines.push('Капустникам заплатили: <span style="color:red">-' + totalInspectorPaid + '</span>');
+            document.getElementById('goPayments').innerHTML = lines.join(' ');
+            return;
+        } else {
+            // Hide overlay when playing
+            document.getElementById('gameOverScreen').style.display = 'none';
+        }
+        // Now clear for normal play
         gameCanvas.style.filter = 'none';
         ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
         uiCtx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
-
-        if (isGameOver) {
-          // Draw Game Over background
-          ctx.drawImage(gameOverImg, 0, 0, gameCanvas.width, gameCanvas.height);
-
-          // Overlay text
-          uiCtx.fillStyle = 'white';
-          uiCtx.textAlign = 'center';
-          uiCtx.font = '36px Arial';
-          uiCtx.fillText('Ваш счет: ' + score + ' очков', uiCanvas.width/2, 150);
-
-          // Draw payment lines in rounded white boxes
-          let y = 200;
-          if (totalServicePaid > 0) {
-            // Draw white rounded background for service payment
-            const padding = 10;
-            const text = `В сервисе заплатили: -${totalServicePaid}`;
-            uiCtx.font = '24px Arial';
-            const textW = uiCtx.measureText(text).width;
-            const rectX = uiCanvas.width/2 - textW/2 - padding;
-            const rectY = y - 30;
-            const rectH = 30;
-            const rectW = textW + padding*2;
-            const radius = 10;
-            uiCtx.fillStyle = 'white';
-            uiCtx.beginPath();
-            uiCtx.moveTo(rectX + radius, rectY);
-            uiCtx.lineTo(rectX + rectW - radius, rectY);
-            uiCtx.quadraticCurveTo(rectX + rectW, rectY, rectX + rectW, rectY + radius);
-            uiCtx.lineTo(rectX + rectW, rectY + rectH - radius);
-            uiCtx.quadraticCurveTo(rectX + rectW, rectY + rectH, rectX + rectW - radius, rectY + rectH);
-            uiCtx.lineTo(rectX + radius, rectY + rectH);
-            uiCtx.quadraticCurveTo(rectX, rectY + rectH, rectX, rectY + rectH - radius);
-            uiCtx.lineTo(rectX, rectY + radius);
-            uiCtx.quadraticCurveTo(rectX, rectY, rectX + radius, rectY);
-            uiCtx.fill();
-            // Now draw the red text on top
-            uiCtx.fillStyle = 'red';
-            uiCtx.font = '24px Arial';
-            uiCtx.fillText(text, uiCanvas.width/2, rectY + rectH - 8);
-            y += 40;
-          }
-          if (totalInspectorPaid > 0) {
-            // Draw white rounded background for inspector payment
-            const padding = 10;
-            const text = `Взятки капустникам: -${totalInspectorPaid}`;
-            uiCtx.font = '24px Arial';
-            const textW = uiCtx.measureText(text).width;
-            const rectX = uiCanvas.width/2 - textW/2 - padding;
-            const rectY = y - 30;
-            const rectH = 30;
-            const rectW = textW + padding*2;
-            const radius = 10;
-            uiCtx.fillStyle = 'white';
-            uiCtx.beginPath();
-            uiCtx.moveTo(rectX + radius, rectY);
-            uiCtx.lineTo(rectX + rectW - radius, rectY);
-            uiCtx.quadraticCurveTo(rectX + rectW, rectY, rectX + rectW, rectY + radius);
-            uiCtx.lineTo(rectX + rectW, rectY + rectH - radius);
-            uiCtx.quadraticCurveTo(rectX + rectW, rectY + rectH, rectX + rectW - radius, rectY + rectH);
-            uiCtx.lineTo(rectX + radius, rectY + rectH);
-            uiCtx.quadraticCurveTo(rectX, rectY + rectH, rectX, rectY + rectH - radius);
-            uiCtx.lineTo(rectX, rectY + radius);
-            uiCtx.quadraticCurveTo(rectX, rectY, rectX + radius, rectY);
-            uiCtx.fill();
-            // Now draw the red text on top
-            uiCtx.fillStyle = 'red';
-            uiCtx.font = '24px Arial';
-            uiCtx.fillText(text, uiCanvas.width/2, rectY + rectH - 8);
-          }
-
-          // Restart prompt
-          uiCtx.fillStyle = 'white';
-          uiCtx.font = '20px Arial';
-          uiCtx.fillText('Press Space to Restart', uiCanvas.width/2, uiCanvas.height - 50);
-
-          // Continue loop to listen for restart
-          requestAnimationFrame(draw);
-          return;
-        }
         ctx.textAlign = 'start';
         // Update game state
         if (gameStarted) update();
@@ -331,19 +362,15 @@
         // Draw runner with tilt
         drawRunner();
 
-        // UI layer: score and popups
-        uiCtx.fillStyle = 'white';
-        uiCtx.textAlign = 'left';
-        uiCtx.font = '24px Arial';
-        uiCtx.fillText('Score: ' + score, 10, 30);
+        // UI layer: popups only (score/best is now DOM overlay)
         popups.forEach((p, idx) => {
-          uiCtx.globalAlpha = p.alpha;
-          uiCtx.fillStyle = p.color;
-          uiCtx.font = '28px Arial';
-          uiCtx.fillText(p.text, p.x, p.y);
-          p.y -= 1;
-          p.alpha -= 0.02;
-          if (p.alpha <= 0) popups.splice(idx, 1);
+            uiCtx.globalAlpha = p.alpha;
+            uiCtx.fillStyle = p.color;
+            uiCtx.font = '28px Arial';
+            uiCtx.fillText(p.text, p.x, p.y);
+            p.y -= 1;
+            p.alpha -= 0.02;
+            if (p.alpha <= 0) popups.splice(idx, 1);
         });
         uiCtx.globalAlpha = 1;
         // Loop
@@ -384,80 +411,93 @@
         coins = [];
         popups = [];
         frameCount = 0;
+        // Initialize nextObstacleFrame on reset
+        nextObstacleFrame = Math.floor(Math.random() * (maxObstacleInterval - minObstacleInterval)) + minObstacleInterval;
         score = 0;
+        distanceTravelled = 0;
+        killedQuadCount = 0;
+        document.getElementById('scoreDisplay').innerText = 'Score: 0';
+        document.getElementById('bestDisplay').innerText = 'Best: ' + bestScore;
+        document.getElementById('killDisplay').innerText = 'Квадрокоптеров сбито: 0';
         gameStarted = false;
         isGameOver = false;
         totalServicePaid = 0;
         totalInspectorPaid = 0;
         gameCanvas.style.filter = 'none';
         // Reset speed to initial
-        speed = 6;
+        speed = 2.5;
         // On restart: play start sound then background music
         sfxStart.play().catch(() => {});
         sfxStart.addEventListener('ended', () => {
-          bgMusic.currentTime = 0;
-          bgMusic.play().catch(() => {});
+            bgMusic.currentTime = 0;
+            bgMusic.play().catch(() => {});
         }, { once: true });
+        // Restart rendering after reset
+        draw();
     }
 
     // Fake 6-second loader, but wait for both time and assets loaded before starting game
     window.addEventListener('DOMContentLoaded', () => {
-      const overlay = document.getElementById('loaderOverlay');
-      const gameWrapper = document.getElementById('gameWrapper');
-      const bar = document.getElementById('loaderBar');
-      const loaderDenisEl = document.getElementById('loaderCar');
-      const duration = 6000;
-      const start = Date.now();
-      // Add loading text if not present
-      let loadingText = document.getElementById('loaderText');
-      if (!loadingText) {
-        loadingText = document.createElement('div');
-        loadingText.id = 'loaderText';
-        loadingText.style.position = 'absolute';
-        loadingText.style.top = '30px';
-        loadingText.style.left = '50%';
-        loadingText.style.transform = 'translateX(-50%)';
-        loadingText.style.color = 'white';
-        loadingText.style.font = '20px Arial';
-        document.getElementById('loaderContainer').appendChild(loadingText);
-      }
-      // Play loader audio and stop after 5 seconds
-      sfxLoad.play();
-      setTimeout(() => sfxLoad.pause(), 5000);
-      function tick() {
-        const t = Math.min((Date.now() - start) / duration, 1);
-        const percent = Math.floor(t * 100);
-        bar.style.width = percent + '%';
-        loaderDenisEl.style.left = `calc(${percent}% - 40px)`;
-        loadingText.innerText = `Loading... ${percent}%`;
-        // Continue until time elapsed only
-        if (t < 1) {
-          requestAnimationFrame(tick);
-        } else {
-          overlay.style.display = 'none';
-          // (Cheremyushki sign spawn removed)
-          countdownActive = true;
-          // Play start sound at countdown start
-          sfxStart.play().catch(() => {});
-          draw(); // render initial game frame and countdown
-          // start countdown ticks
-          const countdownInterval = setInterval(() => {
-            if (countdown > 1) {
-              countdown--;
-            } else {
-              // last tick: remove countdown and start game
-              clearInterval(countdownInterval);
-              countdownActive = false;
-              gameStarted = false; // ensure reset state
-              // Start background music after countdown, do not play sfxStart again
-              bgMusic.currentTime = 0;
-              bgMusic.play().catch(() => {});
-              draw();
-            }
-          }, 1000);
+        const overlay = document.getElementById('loaderOverlay');
+        const gameWrapper = document.getElementById('gameWrapper');
+        const bar = document.getElementById('loaderBar');
+        const loaderDenisEl = document.getElementById('loaderCar');
+        const duration = 6000;
+        const start = Date.now();
+        // Add loading text if not present
+        let loadingText = document.getElementById('loaderText');
+        if (!loadingText) {
+            loadingText = document.createElement('div');
+            loadingText.id = 'loaderText';
+            loadingText.style.position = 'absolute';
+            loadingText.style.top = '30px';
+            loadingText.style.left = '50%';
+            loadingText.style.transform = 'translateX(-50%)';
+            loadingText.style.color = 'white';
+            loadingText.style.font = '20px Arial';
+            document.getElementById('loaderContainer').appendChild(loadingText);
         }
-      }
-      tick();
+        // Play loader audio and stop after 5 seconds
+        sfxLoad.play();
+        setTimeout(() => sfxLoad.pause(), 5000);
+        function tick() {
+            const t = Math.min((Date.now() - start) / duration, 1);
+            const percent = Math.floor(t * 100);
+            bar.style.width = percent + '%';
+            loaderDenisEl.style.left = `calc(${percent}% - 40px)`;
+            loadingText.innerText = `Loading... ${percent}%`;
+            // Continue until time elapsed only
+            if (t < 1) {
+                requestAnimationFrame(tick);
+            } else {
+                overlay.style.display = 'none';
+                // (Cheremyushki sign spawn removed)
+                countdownActive = true;
+                // Play start sound at countdown start
+                sfxStart.play().catch(() => {});
+                draw(); // render initial game frame and countdown
+                // start countdown ticks
+                const countdownInterval = setInterval(() => {
+                    if (countdown > 1) {
+                        countdown--;
+                    } else {
+                        // last tick: remove countdown and start game
+                        clearInterval(countdownInterval);
+                        countdownActive = false;
+                        gameStarted = false; // ensure reset state
+                        // Start background music after countdown, do not play sfxStart again
+                        bgMusic.currentTime = 0;
+                        bgMusic.play().catch(() => {});
+                        draw();
+                    }
+                }, 1000);
+            }
+        }
+        tick();
+        // Attach restart handler to the HTML button once DOM is ready
+        document.getElementById('goRestart').addEventListener('click', resetGame);
+        // Ensure button is clickable
+        document.getElementById('goRestart').style.pointerEvents = 'auto';
     });
 </script>
 </body>
