@@ -16,8 +16,8 @@
     display:flex;align-items:center;justify-content:center;z-index:10;">
   <div id="loaderContainer" style="position:relative;width:600px;height:20px;background:#444;border:2px solid #fff;overflow:hidden;">
     <div id="loaderBar" style="background:#0f0;width:0%;height:100%;"></div>
-    <img id="loaderCar" src="assets/denis_runner.png" style="position:absolute;top:-20px;left:0;width:80px;height:40px;"/>
-    <img id="loaderServiceIcon" src="assets/service.png" style="position:absolute;top:-65px;right:0;width:75px;height:120px;"/>
+    <img id="loaderCar" src="assets/denis_runner.png" style="position:absolute;top:-10px;left:0;width:80px;height:40px;"/>
+    <img id="loaderServiceIcon" src="assets/service.png" style="position:absolute;top:-10px;right:-75px;width:75px;height:120px;"/>
   </div>
 </div>
 <div id="gameWrapper" style="">
@@ -74,6 +74,7 @@
     let totalServicePaid = 0;
     let totalInspectorPaid = 0;
 
+
     // Runner settings
     const runner = { x: 35, y: 315, width: 160, height: 80, vy: 0, gravity: 0.8, jumpPower: -25 };
 
@@ -84,46 +85,21 @@
 
     // World parameters
     let bgX = 0;
-    let speed = 2;
+    let speed = 6;
     let frameCount = 0;
     const obstacles = [];
 
-    // Handle keydown / mousedown for charging
-    function startCharge() {
-      if (!gameStarted && !isGameOver && runner.y === 315) {
-        isCharging = true;
-        chargeStart = performance.now();
-        gameStarted = true;
-        sfxStart.play().catch(() => {});
-        sfxStart.addEventListener('ended', () => {
-          bgMusic.play().catch(() => {});
-        }, { once: true });
-      }
-    }
-    function endCharge() {
-      if (isCharging) {
-        const holdTime = performance.now() - chargeStart;
-        const ratio = Math.min(holdTime / maxChargeTime, 1);
-        runner.vy = runner.jumpPower * (1 + 0.3 * ratio);
-        isCharging = false;
-      }
-    }
+    // Simple jump on space/arrow up, and reset on game over
     window.addEventListener('keydown', e => {
       if (isGameOver && (e.code === 'Space' || e.code === 'ArrowUp')) {
         resetGame();
-        sfxStart.play().catch(() => {});
-        sfxStart.addEventListener('ended', () => {
-          bgMusic.play().catch(() => {});
-        }, { once: true });
         return;
       }
-      if (e.code === 'Space' || e.code === 'ArrowUp') startCharge();
+      if ((e.code === 'Space' || e.code === 'ArrowUp') && runner.y === 315 && !isGameOver) {
+        gameStarted = true;
+        runner.vy = runner.jumpPower;
+      }
     });
-    window.addEventListener('keyup', e => {
-      if (e.code === 'Space' || e.code === 'ArrowUp') endCharge();
-    });
-    window.addEventListener('mousedown', startCharge);
-    window.addEventListener('mouseup', endCharge);
 
     function spawnObstacle() {
       const r = Math.random();
@@ -232,14 +208,13 @@
           ) {
             score += 25;
             popups.push({ x: runner.x, y: runner.y, text: '+25', color: 'green', alpha: 1 });
-            sfxCheck.play().catch(() => {});
             coins.splice(i, 1);
             continue;
           }
           if (c.x + c.width < 0) coins.splice(i, 1);
         }
         // Gradually increase game speed even more slowly
-        speed += 0.0002;
+        speed += 0.001 / 1.5;
     }
 
     function draw() {
@@ -273,17 +248,64 @@
           uiCtx.font = '36px Arial';
           uiCtx.fillText('Ваш счет: ' + score + ' очков', uiCanvas.width/2, 150);
 
+          // Draw payment lines in rounded white boxes
           let y = 200;
           if (totalServicePaid > 0) {
+            // Draw white rounded background for service payment
+            const padding = 10;
+            const text = `В сервисе заплатили: -${totalServicePaid}`;
+            uiCtx.font = '24px Arial';
+            const textW = uiCtx.measureText(text).width;
+            const rectX = uiCanvas.width/2 - textW/2 - padding;
+            const rectY = y - 30;
+            const rectH = 30;
+            const rectW = textW + padding*2;
+            const radius = 10;
+            uiCtx.fillStyle = 'white';
+            uiCtx.beginPath();
+            uiCtx.moveTo(rectX + radius, rectY);
+            uiCtx.lineTo(rectX + rectW - radius, rectY);
+            uiCtx.quadraticCurveTo(rectX + rectW, rectY, rectX + rectW, rectY + radius);
+            uiCtx.lineTo(rectX + rectW, rectY + rectH - radius);
+            uiCtx.quadraticCurveTo(rectX + rectW, rectY + rectH, rectX + rectW - radius, rectY + rectH);
+            uiCtx.lineTo(rectX + radius, rectY + rectH);
+            uiCtx.quadraticCurveTo(rectX, rectY + rectH, rectX, rectY + rectH - radius);
+            uiCtx.lineTo(rectX, rectY + radius);
+            uiCtx.quadraticCurveTo(rectX, rectY, rectX + radius, rectY);
+            uiCtx.fill();
+            // Now draw the red text on top
             uiCtx.fillStyle = 'red';
             uiCtx.font = '24px Arial';
-            uiCtx.fillText('В сервисе заплатили: -' + totalServicePaid, uiCanvas.width/2, y);
-            y += 30;
+            uiCtx.fillText(text, uiCanvas.width/2, rectY + rectH - 8);
+            y += 40;
           }
           if (totalInspectorPaid > 0) {
+            // Draw white rounded background for inspector payment
+            const padding = 10;
+            const text = `Взятки капустникам: -${totalInspectorPaid}`;
+            uiCtx.font = '24px Arial';
+            const textW = uiCtx.measureText(text).width;
+            const rectX = uiCanvas.width/2 - textW/2 - padding;
+            const rectY = y - 30;
+            const rectH = 30;
+            const rectW = textW + padding*2;
+            const radius = 10;
+            uiCtx.fillStyle = 'white';
+            uiCtx.beginPath();
+            uiCtx.moveTo(rectX + radius, rectY);
+            uiCtx.lineTo(rectX + rectW - radius, rectY);
+            uiCtx.quadraticCurveTo(rectX + rectW, rectY, rectX + rectW, rectY + radius);
+            uiCtx.lineTo(rectX + rectW, rectY + rectH - radius);
+            uiCtx.quadraticCurveTo(rectX + rectW, rectY + rectH, rectX + rectW - radius, rectY + rectH);
+            uiCtx.lineTo(rectX + radius, rectY + rectH);
+            uiCtx.quadraticCurveTo(rectX, rectY + rectH, rectX, rectY + rectH - radius);
+            uiCtx.lineTo(rectX, rectY + radius);
+            uiCtx.quadraticCurveTo(rectX, rectY, rectX + radius, rectY);
+            uiCtx.fill();
+            // Now draw the red text on top
             uiCtx.fillStyle = 'red';
             uiCtx.font = '24px Arial';
-            uiCtx.fillText('Взятки капустникам: -' + totalInspectorPaid, uiCanvas.width/2, y);
+            uiCtx.fillText(text, uiCanvas.width/2, rectY + rectH - 8);
           }
 
           // Restart prompt
@@ -369,7 +391,13 @@
         totalInspectorPaid = 0;
         gameCanvas.style.filter = 'none';
         // Reset speed to initial
-        speed = 2;
+        speed = 6;
+        // On restart: play start sound then background music
+        sfxStart.play().catch(() => {});
+        sfxStart.addEventListener('ended', () => {
+          bgMusic.currentTime = 0;
+          bgMusic.play().catch(() => {});
+        }, { once: true });
     }
 
     // Fake 6-second loader, but wait for both time and assets loaded before starting game
@@ -407,7 +435,10 @@
           requestAnimationFrame(tick);
         } else {
           overlay.style.display = 'none';
+          // (Cheremyushki sign spawn removed)
           countdownActive = true;
+          // Play start sound at countdown start
+          sfxStart.play().catch(() => {});
           draw(); // render initial game frame and countdown
           // start countdown ticks
           const countdownInterval = setInterval(() => {
@@ -418,6 +449,9 @@
               clearInterval(countdownInterval);
               countdownActive = false;
               gameStarted = false; // ensure reset state
+              // Start background music after countdown, do not play sfxStart again
+              bgMusic.currentTime = 0;
+              bgMusic.play().catch(() => {});
               draw();
             }
           }, 1000);
