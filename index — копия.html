@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Runner Denis</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: transparent; }
+        #gameCanvas { display: block; margin: 0 auto; }
+    </style>
+</head>
+<body>
+<div id="loaderOverlay" style="position:absolute;top:0;left:0;width:800px;height:400px;
+    background: url('assets/splash_screen.png') no-repeat center center;
+    background-size: cover;
+    display:flex;align-items:center;justify-content:center;z-index:10;">
+  <div id="loaderContainer" style="position:relative;width:600px;height:20px;background:#444;border:2px solid #fff;overflow:hidden;">
+    <div id="loaderBar" style="background:#0f0;width:0%;height:100%;"></div>
+    <img id="loaderCar" src="assets/denis_runner.png" style="position:absolute;top:-20px;left:0;width:80px;height:40px;"/>
+    <img id="loaderServiceIcon" src="assets/service.png" style="position:absolute;top:-65px;right:0;width:75px;height:120px;"/>
+  </div>
+</div>
+<div id="gameWrapper" style="display:none;">
+  <div id="canvasContainer" style="position: relative; width: 800px; margin: 0 auto;">
+    <canvas id="gameCanvas" width="800" height="400" style="position: absolute; top:0; left:0;"></canvas>
+    <canvas id="uiCanvas"   width="800" height="400" style="position: absolute; top:0; left:0; pointer-events: none;"></canvas>
+  </div>
+</div>
+<script>
+    const gameCanvas = document.getElementById('gameCanvas');
+    const ctx        = gameCanvas.getContext('2d');
+    const uiCanvas   = document.getElementById('uiCanvas');
+    const uiCtx      = uiCanvas.getContext('2d');
+    let gameStarted = false;
+    let coins = [];
+    let popups = [];
+    let isGameOver = false;
+    const coinSpawnInterval = 150;
+    const coinMinY = 50;
+    const coinMaxY = 200;
+
+    // Assets
+    const bg = new Image(); bg.src = 'assets/city_background.png';
+    const denisImg = new Image(); denisImg.src = 'assets/denis_runner.png';
+    const pit = new Image(); pit.src = 'assets/pothole.png';
+    const service = new Image(); service.src = 'assets/service.png';
+    const checkImg = new Image(); checkImg.src = 'assets/check_engine.png';
+    const inspectorImg = new Image(); inspectorImg.src = 'assets/inspector.png';
+    const coinImg = new Image(); coinImg.src = 'assets/coin.png';
+
+    const bgMusic      = new Audio('assets/bgMusic.mp3');
+    bgMusic.loop = true;
+    bgMusic.volume = 0.6;
+    const sfxStart      = new Audio('assets/start.mp3');
+    const sfxInspector  = new Audio('assets/inspector_sfx.mp3');
+    const sfxService    = new Audio('assets/service_sfx.mp3');
+    const sfxCheck      = new Audio('assets/check_sfx.mp3');
+    const sfxDeath      = new Audio('assets/death_sfx.mp3');
+
+    // Game state
+    let score = 0;
+    ctx.font = '24px Arial';
+    ctx.fillStyle = '#FFF';
+
+    let totalServicePaid = 0;
+    let totalInspectorPaid = 0;
+
+    // Runner settings
+    const runner = { x: 35, y: 315, width: 160, height: 80, vy: 0, gravity: 0.8, jumpPower: -25 };
+
+    // World parameters
+    let bgX = 0;
+    let speed = 6;
+    let frameCount = 0;
+    const obstacles = [];
+
+    // Simple jump logic like Chrome Dino
+    window.addEventListener('keydown', e => {
+      if (isGameOver && (e.code === 'Space' || e.code === 'ArrowUp')) {
+        resetGame();
+        sfxStart.play();
+        sfxStart.addEventListener('ended', () => {
+          bgMusic.play();
+        }, { once: true });
+        return;
+      }
+      if ((e.code === 'Space' || e.code === 'ArrowUp') && runner.y === 315) {
+        // on first jump, start audio
+        if (!gameStarted) {
+          gameStarted = true;
+          sfxStart.play();
+          sfxStart.addEventListener('ended', () => {
+            bgMusic.play();
+          }, { once: true });
+        }
+        runner.vy = runner.jumpPower;
+      }
+    });
+    window.addEventListener('mousedown', () => {
+      if (isGameOver) {
+        resetGame();
+        sfxStart.play();
+        sfxStart.addEventListener('ended', () => {
+          bgMusic.play();
+        }, { once: true });
+        return;
+      }
+      if (runner.y === 315) {
+        if (!gameStarted) {
+          gameStarted = true;
+          sfxStart.play();
+          sfxStart.addEventListener('ended', () => {
+            bgMusic.play();
+          }, { once: true });
+        }
+        runner.vy = runner.jumpPower;
+      }
+    });
+
+    function spawnObstacle() {
+      const r = Math.random();
+      if (r < 0.25) {
+        // Pit
+        const w = 60, h = 60;
+        const y = runner.y + runner.height;
+        obstacles.push({ x: canvas.width, y, width: w, height: h, img: pit, counted: false, type: 'pit' });
+      } else if (r < 0.5) {
+        // Service
+        const w = 75, h = 120;
+        const y = runner.y + runner.height - h;
+        obstacles.push({ x: canvas.width, y, width: w, height: h, img: service, counted: false, type: 'service' });
+      } else if (r < 0.75) {
+        // Check Engine
+        const w = 60, h = 60;
+        const y = runner.y + runner.height - h;
+        obstacles.push({ x: canvas.width, y, width: w, height: h, img: checkImg, counted: false, type: 'check' });
+      } else {
+        // Inspector
+        const w = 50, h = 80;
+        const y = runner.y + runner.height - h;
+        obstacles.push({ x: canvas.width, y, width: w, height: h, img: inspectorImg, counted: false, type: 'inspector' });
+      }
+    }
+
+    function spawnCoin() {
+      const w = 100, h = 100;
+      const y = Math.random() * (coinMaxY - coinMinY) + coinMinY;
+      coins.push({ x: canvas.width, y, width: w, height: h, img: coinImg, type: 'coin' });
+    }
+
+    function update() {
+        if (isGameOver) return;
+        frameCount++;
+        // Scroll background
+        bgX -= speed;
+        if (bgX <= -bg.width) bgX = 0;
+
+        // Simple gravity
+        runner.vy += runner.gravity;
+        runner.y = Math.min(runner.y + runner.vy, 315);
+
+        // Spawn obstacles
+        if (frameCount % 120 === 0) spawnObstacle();
+        if (frameCount % coinSpawnInterval === 0) spawnCoin();
+
+        // Move obstacles and detect collisions
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+            const o = obstacles[i];
+            o.x -= speed;
+            // Check collision
+            if (
+                runner.x < o.x + o.width &&
+                runner.x + runner.width > o.x &&
+                runner.y < o.y + o.height &&
+                runner.y + runner.height > o.y
+            ) {
+                if (o.type === 'pit' || o.type === 'check') {
+                  sfxDeath.play();
+                  bgMusic.pause();
+                  isGameOver = true;
+                } else if (o.type === 'inspector') {
+                  if (score >= 50) {
+                    totalInspectorPaid += 50;
+                    score -= 50;
+                    popups.push({ x: runner.x, y: runner.y, text: '-50', color: 'red', alpha: 1 });
+                    sfxInspector.play();
+                  } else {
+                    sfxDeath.play();
+                    bgMusic.pause();
+                    isGameOver = true;
+                  }
+                } else if (o.type === 'service') {
+                  if (score >= 100) {
+                    totalServicePaid += 100;
+                    score -= 100;
+                    popups.push({ x: runner.x, y: runner.y, text: '-100', color: 'red', alpha: 1 });
+                    sfxService.play();
+                  } else {
+                    sfxDeath.play();
+                    bgMusic.pause();
+                    isGameOver = true;
+                  }
+                }
+                o.counted = true;
+                obstacles.splice(i, 1);
+                return;
+            }
+            // Count score when obstacle passed
+            if (o.x + o.width < runner.x && !o.counted) {
+                score++;
+                o.counted = true;
+            }
+            // Remove off-screen
+            if (o.x + o.width < 0) obstacles.splice(i, 1);
+        }
+        for (let i = coins.length - 1; i >= 0; i--) {
+          const c = coins[i];
+          c.x -= speed;
+          if (
+            runner.x < c.x + c.width &&
+            runner.x + runner.width > c.x &&
+            runner.y < c.y + c.height &&
+            runner.y + runner.height > c.y
+          ) {
+            score += 25;
+            popups.push({ x: runner.x, y: runner.y, text: '+25', color: 'green', alpha: 1 });
+            sfxCheck.play();
+            coins.splice(i, 1);
+            continue;
+          }
+          if (c.x + c.width < 0) coins.splice(i, 1);
+        }
+        // Gradually increase game speed more slowly (1.5× slower)
+        speed += 0.001 / 1.5;
+    }
+
+    function draw() {
+        // reset filters and clear both layers
+        gameCanvas.style.filter = 'none';
+        ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+        uiCtx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
+
+        if (isGameOver) {
+          // blur only the game layer
+          gameCanvas.style.filter = 'blur(4px)';
+          // dark overlay on UI layer
+          uiCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+          uiCtx.fillRect(0, 0, uiCanvas.width, uiCanvas.height);
+          // draw game-over text on UI
+          uiCtx.fillStyle = 'white';
+          uiCtx.textAlign = 'center';
+          uiCtx.font = '36px Arial';
+          uiCtx.fillText('Ну вот и приехали!', uiCanvas.width/2, 100);
+          uiCtx.font = '24px Arial';
+          uiCtx.fillText(`Ваш счет: ${score} очков`, uiCanvas.width/2, 150);
+          let lineY = 190;
+          if (totalServicePaid > 0) {
+            uiCtx.fillStyle = 'red';
+            uiCtx.fillText(`В сервисе заплатили: -${totalServicePaid}`, uiCanvas.width/2, lineY);
+            lineY += 30;
+          }
+          if (totalInspectorPaid > 0) {
+            uiCtx.fillStyle = 'red';
+            uiCtx.fillText(`Взятки капустникам: -${totalInspectorPaid}`, uiCanvas.width/2, lineY);
+            lineY += 30;
+          }
+          uiCtx.fillStyle = 'white';
+          uiCtx.font = '20px Arial';
+          uiCtx.fillText('Press Space to Restart', uiCanvas.width/2, uiCanvas.height - 50);
+          requestAnimationFrame(draw);
+          return;
+        }
+        ctx.textAlign = 'start';
+        // Update game state
+        if (gameStarted) update();
+        // Draw background twice for seamless scroll without seam using integer offset
+        const offsetX = Math.floor(bgX);
+        ctx.drawImage(bg, 0, 0, bg.width, bg.height, offsetX, 0, bg.width, gameCanvas.height);
+        ctx.drawImage(bg, 0, 0, bg.width, bg.height, offsetX + bg.width, 0, bg.width, gameCanvas.height);
+        // Draw coins
+        coins.forEach(c => ctx.drawImage(c.img, c.x, c.y, c.width, c.height));
+        // Draw obstacles
+        obstacles.forEach(o => ctx.drawImage(o.img, o.x, o.y, o.width, o.height));
+        // Draw runner with tilt
+        drawRunner();
+
+        // UI layer: score and popups
+        uiCtx.fillStyle = 'white';
+        uiCtx.textAlign = 'left';
+        uiCtx.font = '24px Arial';
+        uiCtx.fillText('Score: ' + score, 10, 30);
+        popups.forEach((p, idx) => {
+          uiCtx.globalAlpha = p.alpha;
+          uiCtx.fillStyle = p.color;
+          uiCtx.font = '28px Arial';
+          uiCtx.fillText(p.text, p.x, p.y);
+          p.y -= 1;
+          p.alpha -= 0.02;
+          if (p.alpha <= 0) popups.splice(idx, 1);
+        });
+        uiCtx.globalAlpha = 1;
+        // Loop
+        requestAnimationFrame(draw);
+    }
+
+    function drawRunner() {
+        const maxAngle = 25 * Math.PI / 180; // ±25°
+        let angle;
+        if (gameStarted) {
+            if (runner.y >= 315) {
+                angle = 0;
+            } else {
+                let t = runner.vy / 15;
+                t = Math.max(-1, Math.min(1, t));
+                angle = t * maxAngle;
+            }
+        } else {
+            angle = 0;
+        }
+        ctx.save();
+        ctx.translate(runner.x + runner.width / 2, runner.y + runner.height / 2);
+        ctx.rotate(angle);
+        ctx.drawImage(
+            denisImg,
+            -runner.width / 2,
+            -runner.height / 2,
+            runner.width,
+            runner.height
+        );
+        ctx.restore();
+    }
+
+    function resetGame() {
+        runner.y = 315;
+        runner.vy = 0;
+        obstacles.length = 0;
+        coins = [];
+        popups = [];
+        frameCount = 0;
+        score = 0;
+        gameStarted = false;
+        isGameOver = false;
+        totalServicePaid = 0;
+        totalInspectorPaid = 0;
+        gameCanvas.style.filter = 'none';
+        // Reset speed to initial
+        speed = 4;
+    }
+
+    let loaded = 0;
+    const assets = [bg, denisImg, pit, service, checkImg, inspectorImg, coinImg];
+    assets.forEach(img => img.onload = () => {
+      ++loaded;
+      // draw() will be called after loader finishes, not here
+    });
+
+    // Fake 6-second loader, but wait for both time and assets loaded before starting game
+    window.addEventListener('DOMContentLoaded', () => {
+      const overlay = document.getElementById('loaderOverlay');
+      const gameWrapper = document.getElementById('gameWrapper');
+      const bar = document.getElementById('loaderBar');
+      const loaderDenisEl = document.getElementById('loaderCar');
+      const duration = 6000;
+      const start = Date.now();
+      // Add loading text if not present
+      let loadingText = document.getElementById('loaderText');
+      if (!loadingText) {
+        loadingText = document.createElement('div');
+        loadingText.id = 'loaderText';
+        loadingText.style.position = 'absolute';
+        loadingText.style.top = '30px';
+        loadingText.style.left = '50%';
+        loadingText.style.transform = 'translateX(-50%)';
+        loadingText.style.color = 'white';
+        loadingText.style.font = '20px Arial';
+        document.getElementById('loaderContainer').appendChild(loadingText);
+      }
+      function tick() {
+        const t = Math.min((Date.now() - start) / duration, 1);
+        const percent = Math.floor(t * 100);
+        bar.style.width = percent + '%';
+        loaderDenisEl.style.left = `calc(${percent}% - 40px)`;
+        loadingText.innerText = `Loading... ${percent}%`;
+        // Continue until both time elapsed AND all assets loaded
+        if (t < 1 || loaded < assets.length) {
+          requestAnimationFrame(tick);
+        } else {
+          overlay.style.display = 'none';
+          gameWrapper.style.display = 'block';
+          // start game after loader and assets ready
+          draw();
+          sfxStart.play();
+          sfxStart.addEventListener('ended', () => bgMusic.play(), { once: true });
+        }
+      }
+      tick();
+    });
+</script>
+</body>
+</html>
