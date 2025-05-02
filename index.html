@@ -7,20 +7,42 @@
     <!-- Preload loader background for faster initial render -->
     <link rel="preload" href="assets/splash_screen.png" as="image">
     <style>
-        body { margin: 0; overflow: hidden; background: transparent; }
-        #gameCanvas { display: block; margin: 0 auto; }
-        #gameCanvas, #uiCanvas {
-          image-rendering: pixelated;
-          image-rendering: crisp-edges;
-        }
-        #loaderOverlay {
-          background: url('assets/splash_screen.png') no-repeat center center;
-          background-size: cover;
-        }
+      html, body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: #8B4513; /* коричневый фон */
+      }
+      #gameWrapper {
+        width: 100vw;
+        height: 100vh;
+        position: relative;
+      }
+      #canvasContainer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+      }
+      canvas {
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        display: block;
+        width: 100% !important;
+        height: 100% !important;
+      }
+      #loaderOverlay {
+        background: url('assets/splash_screen.png') no-repeat center center;
+        background-size: cover;
+      }
     </style>
 </head>
 <body>
-<div id="loaderOverlay" style="position:absolute;top:0;left:0;width:800px;height:400px;
+<div id="loaderOverlay" style="position:absolute;top:0;left:0;width:100vw;height:100vh;
     display:flex;align-items:center;justify-content:center;z-index:10;">
     <div id="loaderContainer" style="position:relative;width:600px;height:20px;background:#444;border:2px solid #fff;overflow:hidden;">
         <div id="loaderBar" style="background:#0f0;width:0%;height:100%;"></div>
@@ -28,15 +50,15 @@
         <img id="loaderServiceIcon" src="assets/service.png" style="position:absolute;top:-10px;right:-75px;width:75px;height:120px;"/>
     </div>
 </div>
-<div id="gameWrapper" style="">
-    <div id="canvasContainer" style="position: relative; width: 800px; margin: 0 auto;">
+<div id="gameWrapper" style="width:100%;height:100%;position:relative;">
+    <div id="canvasContainer">
         <canvas id="gameCanvas" width="800" height="400" style="position: absolute; top:0; left:0;"></canvas>
-        <canvas id="uiCanvas"   width="800" height="400" style="position: absolute; top:0; left:0; pointer-events: none;"></canvas>
-        <div id="uiOverlay" style="position:absolute;top:0;left:0;width:800px;height:400px;pointer-events:auto;">
+        <canvas id="uiCanvas"   width="800" height="400" style="position: absolute; top:0; left:0;"></canvas>
+        <div id="uiOverlay" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:auto;">
           <div id="scoreDisplay" style="position:absolute;top:10px;left:10px;font:24px Arial;color:white;text-shadow:1px 1px 2px black;">Score: 0</div>
           <div id="bestDisplay"  style="position:absolute;top:10px;right:10px;font:24px Arial;color:white;text-shadow:1px 1px 2px black;">Best: 0</div>
           <div id="killDisplay"  style="position:absolute;top:40px;left:10px;font:24px Arial;color:lime;text-shadow:1px 1px 2px black;">Квадрокоптеров сбито: 0</div>
-          <div id="gameOverScreen" style="display:none;position:absolute;top:0;left:0;width:800px;height:400px;pointer-events:auto;
+          <div id="gameOverScreen" style="display:none;position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:auto;
             background:url('assets/game_over_screen.png') no-repeat center center;background-size:cover;">
             <div id="goScore"      style="position:absolute;top:120px;left:50%;transform:translateX(-50%);font:24px Arial;color:white;text-shadow:1px 1px 2px black;">Ваш счет: 0</div>
             <div id="goBest"       style="position:absolute;top:160px;left:50%;transform:translateX(-50%);font:24px Arial;color:white;text-shadow:1px 1px 2px black;">BEST: 0</div>
@@ -118,7 +140,8 @@
 
     // World parameters
     let bgX = 0;
-    let speed = 2.5;
+let speed = 2.5;
+let lastSpeedBoostScore = 0;
 let frameCount = 0;
 let distanceTravelled = 0;
 let killedQuadCount = 0;
@@ -140,6 +163,21 @@ let killedQuadCount = 0;
             e.preventDefault();
             resetGame();
         }
+    });
+
+    // Support touch on mobile: tap to jump or restart
+    window.addEventListener('touchstart', e => {
+      e.preventDefault();
+      if (!gameStarted && !isGameOver) {
+        // First tap: start/jump
+        if (runner.y === 315) {
+          gameStarted = true;
+          runner.vy = runner.jumpPower;
+        }
+      } else if (isGameOver) {
+        // Tap after death: restart
+        resetGame();
+      }
     });
 
     function spawnObstacle() {
@@ -217,6 +255,7 @@ let killedQuadCount = 0;
             // Shrink obstacle hitbox
             const hitMargin = 10;
             // Check collision with margin
+            let removeObstacle = false;
             if (
                 runner.x < o.x + o.width - hitMargin &&
                 runner.x + runner.width > o.x + hitMargin &&
@@ -224,7 +263,7 @@ let killedQuadCount = 0;
                 runner.y + runner.height > o.y + hitMargin
             ) {
                 if (o.type === 'quadro') {
-                    // Award 50 points, update killedQuadCount, update DOM, start fall animation, return
+                    // Award 50 points, update killedQuadCount, update DOM, start fall animation
                     score += 50;
                     document.getElementById('scoreDisplay').innerText = 'Score: ' + score;
                     killedQuadCount++;
@@ -232,7 +271,12 @@ let killedQuadCount = 0;
                     o.img = quadro1;
                     o.type = 'quadro_fall';
                     o.falling = true;
-                    return;
+                    // Calculate fall velocity to reach ground in ~0.3s at 60fps
+                    const framesToFall = 0.3 * 60;
+                    o.vyFall = (groundY - o.y) / framesToFall;
+                    o.counted = true;
+                    // Do not remove or return; let it fall
+                    continue;
                 }
                 if (o.type === 'pit' || o.type === 'check') {
                     if (score > bestScore) bestScore = score;
@@ -240,6 +284,8 @@ let killedQuadCount = 0;
                     sfxDeath.play().catch(() => {});
                     bgMusic.pause();
                     isGameOver = true;
+                    o.counted = true;
+                    removeObstacle = true;
                 } else if (o.type === 'inspector') {
                     if (score >= 50) {
                         totalInspectorPaid += 50;
@@ -247,12 +293,16 @@ let killedQuadCount = 0;
                         document.getElementById('scoreDisplay').innerText = 'Score: ' + score;
                         popups.push({ x: runner.x, y: runner.y, text: '-50', color: 'red', alpha: 1 });
                         sfxInspector.play().catch(() => {});
+                        o.counted = true;
+                        removeObstacle = true;
                     } else {
                         if (score > bestScore) bestScore = score;
                         document.getElementById('bestDisplay').innerText = 'Best: ' + bestScore;
                         sfxDeath.play().catch(() => {});
                         bgMusic.pause();
                         isGameOver = true;
+                        o.counted = true;
+                        removeObstacle = true;
                     }
                 } else if (o.type === 'service') {
                     if (score >= 100) {
@@ -261,17 +311,18 @@ let killedQuadCount = 0;
                         document.getElementById('scoreDisplay').innerText = 'Score: ' + score;
                         popups.push({ x: runner.x, y: runner.y, text: '-100', color: 'red', alpha: 1 });
                         sfxService.play().catch(() => {});
+                        o.counted = true;
+                        removeObstacle = true;
                     } else {
                         if (score > bestScore) bestScore = score;
                         document.getElementById('bestDisplay').innerText = 'Best: ' + bestScore;
                         sfxDeath.play().catch(() => {});
                         bgMusic.pause();
                         isGameOver = true;
+                        o.counted = true;
+                        removeObstacle = true;
                     }
                 }
-                o.counted = true;
-                obstacles.splice(i, 1);
-                return;
             }
             // Count score when obstacle passed
             if (o.x + o.width < runner.x && !o.counted) {
@@ -279,8 +330,8 @@ let killedQuadCount = 0;
                 document.getElementById('scoreDisplay').innerText = 'Score: ' + score;
                 o.counted = true;
             }
-            // Remove off-screen
-            if (o.x + o.width < 0) obstacles.splice(i, 1);
+            // Remove off-screen or if marked for removal
+            if (o.x + o.width < 0 || removeObstacle) obstacles.splice(i, 1);
         }
         for (let i = coins.length - 1; i >= 0; i--) {
             const c = coins[i];
@@ -304,12 +355,19 @@ let killedQuadCount = 0;
             speed += 0.00002;
         }
 
+        // Speed boost: +5% every 150 points
+        if (score - lastSpeedBoostScore >= 150) {
+            speed *= 1.05;
+            lastSpeedBoostScore += 150;
+        }
+
         // Handle falling quads
         obstacles.forEach((o, idx) => {
           if (o.type === 'quadro_fall' && o.falling) {
-            o.y += 5; // fall speed
-            if (o.y + o.height >= runner.y + runner.height) {
-              // reached ground, stop and remove
+            // Fall using calculated velocity
+            o.y += o.vyFall;
+            if (o.y + o.height >= groundY) {
+              // reached ground, remove
               obstacles.splice(idx, 1);
             }
           }

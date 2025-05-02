@@ -1,2 +1,3 @@
 node_modules/
 assets/*.mp3
+.env
