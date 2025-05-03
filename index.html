@@ -502,6 +502,15 @@ let killedQuadCount = 0;
     window.addEventListener('DOMContentLoaded', () => {
         const overlay = document.getElementById('loaderOverlay');
         const gameWrapper = document.getElementById('gameWrapper');
+        // If running as Telegram WebApp, size containers to its viewport
+        if (window.Telegram && Telegram.WebApp) {
+            const w = Telegram.WebApp.viewportWidth;
+            const h = Telegram.WebApp.viewportHeight;
+            overlay.style.width  = w + 'px';
+            overlay.style.height = h + 'px';
+            gameWrapper.style.width  = w + 'px';
+            gameWrapper.style.height = h + 'px';
+        }
         const bar = document.getElementById('loaderBar');
         const loaderDenisEl = document.getElementById('loaderCar');
         const duration = 6000;
