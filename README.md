@@ -51,7 +51,7 @@ cd Deniska_Runner</code></pre>
   <ul>
     <li>HTML5 Canvas &amp; JavaScript (ES6)</li>
     <li>GitHub Pages for hosting</li>
-    <li>python-telegram-bot for optional backend integration</li>
+   
   </ul>
 
   <h2>License</h2>
