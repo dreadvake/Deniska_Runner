@@ -2,8 +2,6 @@
 
 **Deniska Runner** is a fast-paced pixel-art endless runner where you drive Denis's BMW through the urban highway chaos. Dodge potholes, avoid shady inspectors, blast quadcopters out of the sky, and outrun rivals like Valera and Danya. Collect coins, pay fines, and survive the ever-accelerating road.
 
-![splash_screen](https://github.com/YOUR-USER/YOUR-REPO/assets/UNIQUE-ID/splash_screen.png)
-
 ## ✨ Features
 
 - 🔢 **Stylized pixel art** and smooth parallax scrolling city background
