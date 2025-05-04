@@ -1,59 +1,58 @@
+# Deniska Runner 🏎️
 
-  <h1>Deniska Race</h1>
-  <p>A pixel-art endless runner starring Denis and his BMW, racing along the M1 highway past potholes, police checkpoints, service stations, and rogue quadcopters. Collect coins, pay fines—or crash and burn.</p>
+**Deniska Runner** is a fast-paced pixel-art endless runner where you drive Denis's BMW through the urban highway chaos. Dodge potholes, avoid shady inspectors, blast quadcopters out of the sky, and outrun rivals like Valera and Danya. Collect coins, pay fines, and survive the ever-accelerating road.
 
-  <h2>Demo</h2>
-  <ul>
-    <li><strong>Web:</strong> <a href="https://dreadvake.github.io/Deniska_Runner/">https://dreadvake.github.io/Deniska_Runner/</a></li>
-  </ul>
+![splash_screen](https://github.com/YOUR-USER/YOUR-REPO/assets/UNIQUE-ID/splash_screen.png)
 
-  <h2>Features</h2>
-  <ul>
-    <li><strong>Retro Pixel Art</strong><br>
-        Seamless parallax cityscape background and hand-drawn sprites.</li>
-    <li><strong>Endless Runner</strong><br>
-        Auto-scaling speed: pace increases as your score climbs.</li>
-    <li><strong>Dynamic Obstacles</strong>
-      <ul>
-        <li>Potholes &amp; Check Engine signs (instant game over)</li>
-        <li>Police Inspectors &amp; Service Stations impose fines (–50/–100 points) or end your run</li>
-        <li>Quadcopters fly overhead; crush them for +50 points and a dramatic fall animation</li>
-      </ul>
-    </li>
-    <li><strong>Scoring &amp; Pop-ups</strong><br>
-      <code>+25</code> for coins, <code>+50</code> for quadcopters, <code>–50/–100</code> for fines, with animated pop-ups and a “Best” session score.</li>
-    <li><strong>Desktop Only</strong><br>
-      Fixed 800×400 canvas optimized for PC browsers.</li>
-  </ul>
+## ✨ Features
 
-  <h2>Repository Structure</h2>
-  <pre><code>Deniska_Runner/
-├── assets/                <!-- sprites, backgrounds, sounds -->
-├── index.html             <!-- game entry point -->
-├── README.md              <!-- this file -->
-└── .gitignore
-</code></pre>
+- 🔢 **Stylized pixel art** and smooth parallax scrolling city background
+- ⚡ **Dynamic difficulty** — the longer you survive, the faster it gets
+- 🚨 **Obstacles** include potholes, police checkpoints, inspectors, service stations, and drones
+- 💰 **Coins & Economy**: earn coins every 500 meters, +25 per coin, +50 for shooting down drones
+- 🚓 **AI rivals**: race against Valera, Danya, and the elite presidential cortège
+- 🎧 **Sound-rich experience** with unique background music, sound effects, and event popups
+- ✔ **Game Over Summary**: track your coins, quadcopter kills, and payments to cops & service
 
-  <h2>Installation &amp; Deployment</h2>
-  <ol>
-    <li><strong>Clone the repo</strong><br>
-      <pre><code>git clone https://github.com/dreadvake/Deniska_Runner.git  
-cd Deniska_Runner</code></pre>
-    </li>
-    <li><strong>Serve locally</strong><br>
-      <pre><code>npx http-server .</code></pre>
-    </li>
-    <li><strong>Deploy to GitHub Pages</strong><br>
-      In your repository’s Settings → Pages, select branch <code>main</code> and folder <code>/</code>.</li>
-  </ol>
+## 🎮 Gameplay
 
-  <h2>Technologies</h2>
-  <ul>
-    <li>HTML5 Canvas &amp; JavaScript (ES6)</li>
-    <li>GitHub Pages for hosting</li>
-   
-  </ul>
+- Use **spacebar or arrow up** to jump
+- Avoid pits and drones, collect coins
+- Pay –50 coins to inspectors, –100 to service — or it's game over
+- Every 500 meters = +50 bonus coins
 
-  <h2>License</h2>
-  <p>Released under the <strong>MIT License</strong>. See <code>LICENSE</code> for details.</p>
-</section>
+## 🚀 Getting Started
+
+```bash
+# Clone the repository
+https://github.com/dreadvake/Deniska_Runner.git
+
+# Open index.html in your browser
+```
+
+Alternatively, play it directly via GitHub Pages (if published):
+
+```url
+https://dreadvake.github.io/Deniska_Runner/
+```
+
+## 🔄 Tech Stack
+
+- HTML5 Canvas
+- JavaScript ES6 modules
+- Audio & sprite asset management
+- Responsive design for desktop
+
+## 📅 Development Status
+
+Version **1.0** released. Future updates may include:
+- Leaderboards
+- Mobile support
+- Power-ups & upgrades
+
+---
+
+Made with ❤️ by [@dreadvake](https://github.com/dreadvake)
+
+
+> “If you see quadcopters — hit the gas.” — Denis
