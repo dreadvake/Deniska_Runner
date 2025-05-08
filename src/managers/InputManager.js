@@ -1,6 +1,7 @@
 
 
-import { eventBus } from '../core/Game';
+import { eventBus } from '../utils/EventBusInstance.js';
+
 
 export function setupInput(game) {
   // Space bar to jump

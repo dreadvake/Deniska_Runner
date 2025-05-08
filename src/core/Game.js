@@ -1,11 +1,11 @@
-import { randomRange, rectsCollide } from '../utils/helpers';
-import { setupInput } from '../managers/InputManager';
-import { spawnObstacle, spawnCoin, spawnValera, spawnDanya, spawnCortage } from '../managers/SpawnerManager';
+import { randomRange, rectsCollide } from '../utils/helpers.js';
+import { setupInput } from '../managers/InputManager.js';
+import { spawnObstacle, spawnCoin, spawnValera, spawnDanya, spawnCortage } from '../managers/SpawnerManager.js';
 import { runner } from "../runner.js";
-import EventBus from '../utils/EventBus';
-import { loadAssets } from '../utils/assetLoader';
-
-export const eventBus = new EventBus();
+import EventBus from '../utils/EventBus.js';
+import { loadAssets } from '../utils/assetLoader.js';
+import { eventBus } from '../utils/EventBusInstance.js';
+// Удалите строку: export const eventBus = new EventBus();
 
 export default class Game {
   constructor({canvas, uiCanvas}) {
@@ -50,6 +50,9 @@ export default class Game {
     this.roadX2 = this.canvas.width;
     this.gravity = 0.5;
     this.groundY = this.canvas.height - 100; // adjust as needed
+    this.score = 0;
+    this.coinCount = 0;
+    this.kilometers = 0;
 
     // Entity collections
     this.valeras = [];
@@ -80,9 +83,6 @@ export default class Game {
       // Spawn entities
       spawnObstacle(this);
       spawnCoin(this);
-      spawnValera(this);
-      spawnDanya(this);
-      spawnCortage(this);
       this.speed += 0.00002;
       // -- Новый блок спавна Валеры, Дани, Кортежа --
       this.distanceSinceLastValera += this.speed;
@@ -350,6 +350,9 @@ export default class Game {
     this.ctx.imageSmoothingQuality = 'high';
     this.uiCtx.imageSmoothingEnabled = true;
     this.uiCtx.imageSmoothingQuality = 'high';
+    // Fallback background fill to avoid black screen
+    this.ctx.fillStyle = '#87CEEB';
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     if (this.isGameOver) {
       eventBus.emit('renderGameOver');
       return;
@@ -364,7 +367,7 @@ export default class Game {
       this.uiCtx.textAlign = 'center';
       this.uiCtx.font = '72px Arial';
       this.uiCtx.fillText(this.countdown, this.canvas.width / 2, this.canvas.height / 2);
-      requestAnimationFrame(this.draw.bind(this));ы
+      requestAnimationFrame(this.draw.bind(this));
       return;
     }
     // Normal play rendering
@@ -442,19 +445,23 @@ export default class Game {
     const loaderOverlay = document.getElementById('loaderOverlay');
     const loaderBar = document.getElementById('loaderBar');
     const loaderText = document.getElementById('loaderText');
+    
     const {images, audios} = await loadAssets(progress => {
       const pct = Math.floor(progress * 100);
       if (loaderBar) loaderBar.style.width = `${pct}%`;
       if (loaderText) loaderText.innerText = `Loading... ${pct}%`;
     });
+    
     this.images = images;
     this.audios = audios;
     this.denisImg = images['denis_runner.png'];
     this.skyImg = images['bg_sky.png'];
     this.roadImg = images['bg_road.png'];
-// Задайте высоту «земли» по высоте дороги:
+    
+    // Задайте высоту «земли» по высоте дороги:
     console.log(images);
     this.groundY = this.canvas.height - this.roadImg.height;
+    
     // Assign SFX and music audio fields
     this.cortageSfx = audios['cortage.mp3'];
     this.valeraSfx = audios['valera.mp3'];

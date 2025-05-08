@@ -1,4 +1,5 @@
-import { eventBus } from '../core/Game.js';
+import { eventBus } from '../utils/EventBusInstance.js';
+
 
 export default class UIManager {
   constructor() {
