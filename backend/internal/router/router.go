@@ -3,8 +3,8 @@ package router
 import (
 	"deniska_runner/internal/handler"
 	"deniska_runner/internal/middleware"
-
 	"github.com/go-chi/chi/v5"
+	"net/http"
 )
 
 func SetupRouter(
@@ -13,6 +13,9 @@ func SetupRouter(
 	wsHandler *handler.WebSocketHandler,
 ) *chi.Mux {
 	r := chi.NewRouter()
+
+	fileServer := http.FileServer(http.Dir("frontend"))
+	r.Handle("/*", fileServer)
 
 	r.Route("/api", func(r chi.Router) {
 
