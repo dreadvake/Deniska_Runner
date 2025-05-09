@@ -1,0 +1,15 @@
+# Копия .env файла без реальных значений
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_password_here
+POSTGRES_DB=runner_db
+POSTGRES_PORT=5432
+
+BACKEND_PORT=8080
+DB_HOST=postgres
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=your_password_here
+DB_NAME=runner_db
+DB_SSLMODE=disable
+
+FRONTEND_PORT=80

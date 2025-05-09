@@ -52,6 +52,15 @@
     </style>
 </head>
 <body>
+<div id="loginOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000;">
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 5px;">
+        <h2>Войти</h2>
+        <input type="text" id="username" placeholder="Имя пользователя">
+        <input type="password" id="password" placeholder="Пароль">
+        <button onclick="login()">Войти</button>
+    </div>
+</div>
+
 <div id="loaderOverlay">
     <div id="loaderText" style="position:absolute;top:-30px;left:50%;transform:translateX(-50%);color:white;font:20px Arial;">Loading... 0%</div>
     <div id="loaderContainer" style="position:absolute;bottom:15%;left:50%;transform:translateX(-50%);width:240px;height:22px;background:#444;border:2px solid #fff;overflow:hidden;">

@@ -23,7 +23,7 @@ export function draw() {
         // draw current frame (background and runner at rest)
         ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
         uiCtx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
-        // draw static background and runner without motion
+        // draw frontend background and runner without motion
         ctx.drawImage(bg, 0, 0, bg.width, bg.height, 0, 0, gameCanvas.width, gameCanvas.height);
         ctx.drawImage(denisImg, runner.x, runner.y, runner.width, runner.height);
         // draw countdown number

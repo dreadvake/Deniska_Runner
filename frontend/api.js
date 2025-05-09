@@ -1,0 +1,41 @@
+// api.js
+const API_URL = 'http://localhost:8080/api';
+
+export const api = {
+    async login(username, password) {
+        const response = await fetch(`${API_URL}/user/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, password }),
+        });
+        if (!response.ok) throw new Error('Login failed');
+        return response.json();
+    },
+
+    async saveScore(score) {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/score`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(score),
+        });
+        if (!response.ok) throw new Error('Failed to save score');
+        return response.json();
+    },
+
+    async getLeaderboard() {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/leaderboard?game=runner`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+        if (!response.ok) throw new Error('Failed to get leaderboard');
+        return response.json();
+    }
+};

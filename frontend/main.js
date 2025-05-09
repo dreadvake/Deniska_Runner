@@ -1,4 +1,6 @@
-// Main game variables
+// main.js
+import { api } from './api.js';
+
 let lastCoinSpawnMeters = 0;
 let distanceSinceLastDanya = 0;
 let nextDanyaDistance = 0;
@@ -74,6 +76,44 @@ const jumpPower = -10;
 
 // Pit spawn center Y-coordinate (e.g., mouse-measured)
 const pitSpawnCenterY = 370;
+
+// main.js
+async function login() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+
+    try {
+        const response = await api.login(username, password);
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('username', username);
+        document.getElementById('loginOverlay').style.display = 'none';
+    } catch (error) {
+        alert('Ошибка входа');
+    }
+}
+
+// В функции gameOver или там, где заканчивается игра:
+async function gameOver() {
+    isGameOver = true;
+    // ... существующий код ...
+
+    // Сохраняем счет, если пользователь авторизован
+    const token = localStorage.getItem('token');
+    if (token) {
+        try {
+            await api.saveScore({
+                game: 'runner',
+                user_name: localStorage.getItem('username'), // Сохраняем при логине
+                points: {
+                    distance: Math.floor(distanceTravelledPx / 100),
+                    money: coinCount
+                }
+            });
+        } catch (error) {
+            console.error('Failed to save score:', error);
+        }
+    }
+}
 
 // Asset loading
 function loadAssets(onComplete) {
