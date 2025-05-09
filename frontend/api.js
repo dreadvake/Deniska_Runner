@@ -8,7 +8,11 @@ export const api = {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify({
+                name: username,
+                password: password
+            })
+
         });
         return response.json();
     },
@@ -19,7 +23,12 @@ export const api = {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ username, password, email })
+            body: JSON.stringify({
+                name: username,
+                password: password,
+                email: email
+            })
+
         });
         return response.json();
     },

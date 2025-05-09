@@ -20,16 +20,14 @@ func SetupRouter(
 
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.AuthMiddleware)
-
 			r.Get("/leaderboard", gameHandler.GetLeaderboard)
 			r.Post("/score", gameHandler.SaveScore)
-
 			r.Get("/ws/game", wsHandler.HandleGameWebSocket)
 		})
 
-		r.Post("/user", userHandler.CreateUser)
-		r.Post("/user/login", userHandler.LoginUser)
-		r.Post("/user/logout", userHandler.LogoutUser)
+		r.Post("/register", userHandler.CreateUser)
+		r.Post("/login", userHandler.LoginUser)
+		r.Post("/logout", userHandler.LogoutUser)
 	})
 
 	return r
