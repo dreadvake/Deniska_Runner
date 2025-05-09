@@ -25,9 +25,10 @@ func SetupRouter(
 			r.Get("/ws/game", wsHandler.HandleGameWebSocket)
 		})
 
-		r.Post("/register", userHandler.CreateUser)
-		r.Post("/login", userHandler.LoginUser)
-		r.Post("/logout", userHandler.LogoutUser)
+		r.With(middleware.CorsMiddleware).Post("/register", userHandler.CreateUser)
+		r.With(middleware.CorsMiddleware).Post("/login", userHandler.LoginUser)
+		r.With(middleware.CorsMiddleware).Post("/logout", userHandler.LogoutUser)
+
 	})
 
 	return r
