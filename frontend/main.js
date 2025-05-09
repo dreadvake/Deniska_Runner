@@ -92,6 +92,22 @@ async function login() {
     }
 }
 
+// Добавьте в начало main.js
+function checkAuth() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = '/auth.html';
+        return false;
+    }
+    return true;
+}
+
+// Проверяем авторизацию при загрузке
+if (!checkAuth()) {
+    // Если нет авторизации, остальной код не выполняется
+    throw new Error('Unauthorized');
+}
+
 // В функции gameOver или там, где заканчивается игра:
 async function gameOver() {
     isGameOver = true;

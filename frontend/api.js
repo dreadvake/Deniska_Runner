@@ -3,16 +3,49 @@ const API_URL = 'http://localhost:8080/api';
 
 export const api = {
     async login(username, password) {
-        const response = await fetch(`${API_URL}/user/login`, {
+        const response = await fetch(`${API_URL}/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ username, password }),
+            body: JSON.stringify({ username, password })
         });
-        if (!response.ok) throw new Error('Login failed');
         return response.json();
     },
+
+    async register(username, password, email) {
+        const response = await fetch(`${API_URL}/register`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, password, email })
+        });
+        return response.json();
+    },
+
+    async getScore() {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/score`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        return response.json();
+    },
+
+
+    // async login(username, password) {
+    //     const response = await fetch(`${API_URL}/user/login`, {
+    //         method: 'POST',
+    //         headers: {
+    //             'Content-Type': 'application/json',
+    //         },
+    //         body: JSON.stringify({ username, password }),
+    //     });
+    //     if (!response.ok) throw new Error('Login failed');
+    //     return response.json();
+    // },
 
     async saveScore(score) {
         const token = localStorage.getItem('token');

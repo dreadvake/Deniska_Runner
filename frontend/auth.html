@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Deniska Runner - Авторизация</title>
+    <link rel="preload" href="assets/splash_screen.webp" as="image">
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            background: url('assets/splash_screen.webp') no-repeat center center fixed;
+            background-size: cover;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .auth-container {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px;
+            border-radius: 10px;
+            color: white;
+            width: 300px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            border: none;
+            color: white;
+        }
+        .tab.active {
+            background: rgba(76, 175, 80, 0.5);
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border: none;
+            border-radius: 4px;
+            box-sizing: border-box;
+            background: rgba(255, 255, 255, 0.9);
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+<div class="auth-container">
+    <div class="tabs">
+        <button class="tab active" onclick="showForm('login')">Вход</button>
+        <button class="tab" onclick="showForm('register')">Регистрация</button>
+    </div>
+
+    <div id="loginForm">
+        <div class="form-group">
+            <input type="text" id="loginUsername" placeholder="Имя пользователя" required>
+        </div>
+        <div class="form-group">
+            <input type="password" id="loginPassword" placeholder="Пароль" required>
+        </div>
+        <button onclick="login()">Войти</button>
+    </div>
+
+    <div id="registerForm" style="display: none">
+        <div class="form-group">
+            <input type="text" id="registerUsername" placeholder="Имя пользователя" required>
+        </div>
+        <div class="form-group">
+            <input type="password" id="registerPassword" placeholder="Пароль" required>
+        </div>
+        <div class="form-group">
+            <input type="email" id="registerEmail" placeholder="Email" required>
+        </div>
+        <button onclick="register()">Зарегистрироваться</button>
+    </div>
+</div>
+
+<script>
+    function showForm(formType) {
+        document.getElementById('loginForm').style.display = formType === 'login' ? 'block' : 'none';
+        document.getElementById('registerForm').style.display = formType === 'register' ? 'block' : 'none';
+
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        event.target.classList.add('active');
+    }
+
+    async function login() {
+        const username = document.getElementById('loginUsername').value;
+        const password = document.getElementById('loginPassword').value;
+
+        try {
+            const response = await fetch('http://localhost:8080/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username: username,
+                    password: password
+                })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                localStorage.setItem('token', data.token);
+                window.location.href = '/index.html';
+            } else {
+                alert('Ошибка входа: ' + data.message);
+            }
+        } catch (error) {
+            alert('Ошибка при подключении к серверу');
+        }
+    }
+
+    async function register() {
+        const username = document.getElementById('registerUsername').value;
+        const password = document.getElementById('registerPassword').value;
+        const email = document.getElementById('registerEmail').value;
+
+        try {
+            const response = await fetch('http://localhost:8080/api/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username: username,
+                    password: password,
+                    email: email
+                })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                alert('Регистрация успешна! Теперь вы можете войти.');
+                showForm('login');
+            } else {
+                alert('Ошибка регистрации: ' + data.message);
+            }
+        } catch (error) {
+            alert('Ошибка при подключении к серверу');
+        }
+    }
+
+    // Проверка авторизации при загрузке страницы
+    if (localStorage.getItem('token')) {
+        window.location.href = '/index.html';
+    }
+</script>
+</body>
+</html>
