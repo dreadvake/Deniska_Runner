@@ -1,0 +1,35 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  GREETING: Hello, World!
+
+tasks:
+  dockerdownV:
+    aliases:
+      - ddv
+    cmds:
+      - docker compose down -v
+  dockerdown:
+    aliases:
+      - dd
+    cmds:
+      - docker compose down
+  dockerrebuild:
+    aliases:
+      - dr
+    cmds:
+      - docker compose down && docker compose build && docker compose up -d
+  dockerup:
+    aliases:
+      - du
+    cmds:
+      - docker compose build && docker compose up -d
+  swaga:
+    cmds:
+      - swag init --generalInfo ../cmd/main.go --dir=internal -o ./internal/docs
+  default:
+    cmds:
+      - echo "{{.GREETING}}"
+    silent: true
