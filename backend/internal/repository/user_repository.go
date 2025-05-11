@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"deniska_runner/internal/models"
 	"errors"
+	"fmt"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -30,12 +31,15 @@ func (u *userRepositoryDB) Create(ctx context.Context, user *models.User) error 
 		return err
 	}
 	query := `
-		INSERT INTO users (username, email, password) 
-		VALUES ($1, $2, $3) 
-		RETURNING id`
+		INSERT INTO users (username, email, password, created_at, updated_at) 
+		VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		RETURNING id, created_at, updated_at`
 	err = u.db.QueryRowContext(ctx, query,
-		user.Name, user.Email, user.Password, user.Email, string(hashedPassword)).
-		Scan(&user.ID)
+		user.Name,
+		user.Email,
+		string(hashedPassword)).
+		Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
+
 	if err != nil {
 		if err.Error() == `pq: duplicate key value violates unique constraint "users_username_key"` {
 			return errors.New("user already exists")
@@ -46,14 +50,14 @@ func (u *userRepositoryDB) Create(ctx context.Context, user *models.User) error 
 }
 
 func (u *userRepositoryDB) Update(ctx context.Context, user *models.User) error {
-	var hashedPassword string
+	var PasswordHash string
 	var err error
 	if user.Password != "" {
 		hashedPasswordBytes, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 		if err != nil {
 			return err
 		}
-		hashedPassword = string(hashedPasswordBytes)
+		PasswordHash = string(hashedPasswordBytes)
 	} else {
 		var currentPassword string
 		err := u.db.QueryRowContext(ctx, `SELECT password FROM users WHERE username = $1`, user.Name).
@@ -61,14 +65,16 @@ func (u *userRepositoryDB) Update(ctx context.Context, user *models.User) error 
 		if err != nil {
 			return err
 		}
-		hashedPassword = currentPassword
+		PasswordHash = currentPassword
 	}
 	query := `
 		UPDATE users 
-		SET username = $1, email = $2, password = $3, HashPassword = $4
-		WHERE ID = $5`
+		SET username = $1, email = $2, password = $3,
+		updated_at = CURRENT_TIMESTAMP
+		WHERE ID = $4`
 	result, err := u.db.ExecContext(ctx, query,
-		user.Name, user.Email, user.Password, hashedPassword, user.ID)
+		user.Name, user.Email, PasswordHash, user.ID)
+
 	if err != nil {
 		return err
 	}
@@ -94,20 +100,21 @@ func (u *userRepositoryDB) Delete(ctx context.Context, username string) error {
 
 func (u *userRepositoryDB) Login(ctx context.Context, username, password string) (*models.User, error) {
 	var user models.User
-	var hashedPassword string
+	var PasswordHash []byte
 	query := `
-		SELECT id, username, email, password, HashPassword 
+		SELECT id, username, email, password
 		FROM users 
 		WHERE username = $1`
 	err := u.db.QueryRowContext(ctx, query, username).
-		Scan(&user.ID, &user.Name, &user.Email, &user.Password, &user.HashPassword)
+		Scan(&user.ID, &user.Name, &user.Email, &PasswordHash)
 	if err == sql.ErrNoRows {
 		return nil, errors.New("user not found")
 	}
 	if err != nil {
 		return nil, err
 	}
-	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
+	fmt.Println(PasswordHash, []byte(password))
+	if err := bcrypt.CompareHashAndPassword(PasswordHash, []byte(password)); err != nil {
 		return nil, errors.New("invalid password")
 	}
 	return &user, nil
