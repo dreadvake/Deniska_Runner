@@ -26,7 +26,7 @@ const randomRange = (min, max) => Math.floor(Math.random() * (max - min + 1)) + 
 let speed = 2.5;
 let gameStarted = false;
 let allowMovement = false;
-let isGameOver = false;
+export let isGameOver = false;
 let bgMusic;
 let bg;
 let ctx;
@@ -109,9 +109,7 @@ if (!checkAuth()) {
 }
 
 // В функции gameOver или там, где заканчивается игра:
-async function gameOver() {
-    isGameOver = true;
-    // ... существующий код ...
+export async function GameOver() {
 
     // Сохраняем счет, если пользователь авторизован
     const token = localStorage.getItem('token');
@@ -121,7 +119,7 @@ async function gameOver() {
                 game: 'runner',
                 user_name: localStorage.getItem('username'), // Сохраняем при логине
                 points: {
-                    distance: Math.floor(distanceTravelledPx / 100),
+                    distance: Math.floor(distanceTravelledPx / (160/3)),
                     money: coinCount
                 }
             });
@@ -261,7 +259,7 @@ function createRunner() {
     };
 }
 
-function resetGame() {
+export function resetGame() {
     // Show HUD overlays on restart
     document.getElementById('scoreDisplay').style.display = 'block';
     document.getElementById('bestDisplay').style.display  = 'block';
@@ -405,6 +403,7 @@ function setupInput() {
         }
         if (isGameOver && (e.code === 'Space' || e.code === 'Enter' || e.key === 'Enter')) {
             e.preventDefault();
+            GameOver();
             resetGame();  // Рестарт при нажатии пробела или Enter
         }
         if (!gameStarted || isGameOver) return;
@@ -1197,6 +1196,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (e.target === restartBtn) {
                     gameStarted = false;
                     isGameOver = false;
+                    GameOver();
                     resetGame();
                     initGame();
                 }
@@ -1210,6 +1210,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 restartBtn.addEventListener('click', function () {
                     gameStarted = false;
                     isGameOver = false;
+                    GameOver();
                     resetGame();
                     initGame();
                 });
@@ -1328,7 +1329,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 // Export game state and reset logic for input.js
-export { isGameOver, resetGame };
 
 function spawnValera() {
     // Выравниваем Y с ямой и поднимаем на 10% высоты холста

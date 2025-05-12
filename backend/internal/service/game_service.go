@@ -21,9 +21,9 @@ func NewGameService(repo repository.GameRepository) *GameService {
 }
 
 func (s *GameService) SaveScore(ctx context.Context, score *models.Score) error {
-	if score.UserName == "" || score.Game == "" {
-		return errors.New("username and game are required")
-	}
+	//if score.UserName == "" || score.Game == "" {
+	//	return errors.New("username and game are required")
+	//}
 	return s.repo.Create(ctx, score)
 }
 

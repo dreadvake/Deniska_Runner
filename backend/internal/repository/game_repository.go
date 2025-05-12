@@ -21,13 +21,26 @@ func NewGameRepositoryDB(db *sql.DB) *GameRepositoryDB {
 	return &GameRepositoryDB{db: db}
 }
 
+func (r *GameRepositoryDB) getUserID(ctx context.Context, username string) (string, error) {
+	const q = `SELECT id FROM users WHERE username = $1`
+	var id string
+	if err := r.db.QueryRowContext(ctx, q, username).Scan(&id); err != nil {
+		return "", err
+	}
+	return id, nil
+}
+
 func (r *GameRepositoryDB) Create(ctx context.Context, score *models.Score) error {
-	query := `
-        INSERT INTO scores (user_name, game, distance, money)
-        VALUES ($1, $2, $3, $4)
-    `
-	_, err := r.db.ExecContext(ctx, query,
-		score.UserName,
+	userID, err := r.getUserID(ctx, score.UserName)
+	if err != nil {
+		return err
+	}
+
+	const q = `
+		INSERT INTO scores (user_id, game, distance, money)
+		VALUES ($1, $2, $3, $4)	`
+	_, err = r.db.ExecContext(ctx, q,
+		userID,
 		score.Game,
 		score.Points.Distance,
 		score.Points.Money,
@@ -36,16 +49,15 @@ func (r *GameRepositoryDB) Create(ctx context.Context, score *models.Score) erro
 }
 
 func (r *GameRepositoryDB) GetLeaderboard(ctx context.Context, score *models.Score) ([]*models.User, error) {
-	query := `
-        SELECT u.id, u.username, u.email, s.distance, s.money
-        FROM users u
-        JOIN scores s ON u.username = s.user_name
-        WHERE s.game = $1
-        ORDER BY s.distance DESC, s.money DESC
-        LIMIT 10
-    `
-
-	rows, err := r.db.QueryContext(ctx, query, score.Game)
+	const q = `
+		SELECT u.id, u.username, u.email, s.distance, s.money
+		FROM users u
+		JOIN scores s ON u.id = s.user_id
+		WHERE s.game = $1
+		ORDER BY s.distance DESC, s.money DESC
+		LIMIT 10
+	`
+	rows, err := r.db.QueryContext(ctx, q, score.Game)
 	if err != nil {
 		return nil, err
 	}
@@ -54,14 +66,13 @@ func (r *GameRepositoryDB) GetLeaderboard(ctx context.Context, score *models.Sco
 	var users []*models.User
 	for rows.Next() {
 		user := &models.User{}
-		err := rows.Scan(
+		if err := rows.Scan(
 			&user.ID,
 			&user.Name,
 			&user.Email,
 			&score.Points.Distance,
 			&score.Points.Money,
-		)
-		if err != nil {
+		); err != nil {
 			return nil, err
 		}
 		users = append(users, user)
@@ -70,28 +81,33 @@ func (r *GameRepositoryDB) GetLeaderboard(ctx context.Context, score *models.Sco
 }
 
 func (r *GameRepositoryDB) Update(ctx context.Context, score *models.Score) error {
-	query := `
-        UPDATE scores 
-        SET distance = $1, money = $2
-        WHERE user_name = $3 AND game = $4
-    `
-	_, err := r.db.ExecContext(ctx, query,
+	userID, err := r.getUserID(ctx, score.UserName)
+	if err != nil {
+		return err
+	}
+	const q = `
+		UPDATE scores
+		SET distance = $1, money = $2
+		WHERE user_id = $3 AND game = $4
+	`
+	_, err = r.db.ExecContext(ctx, q,
 		score.Points.Distance,
 		score.Points.Money,
-		score.UserName,
+		userID,
 		score.Game,
 	)
 	return err
 }
 
 func (r *GameRepositoryDB) Delete(ctx context.Context, score *models.Score) error {
-	query := `
-        DELETE FROM scores
-        WHERE user_name = $1 AND game = $2
-    `
-	_, err := r.db.ExecContext(ctx, query,
-		score.UserName,
-		score.Game,
-	)
+	userID, err := r.getUserID(ctx, score.UserName)
+	if err != nil {
+		return err
+	}
+	const q = `
+		DELETE FROM scores
+		WHERE user_id = $1 AND game = $2
+	`
+	_, err = r.db.ExecContext(ctx, q, userID, score.Game)
 	return err
 }

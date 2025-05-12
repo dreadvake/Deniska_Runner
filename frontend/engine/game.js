@@ -1,5 +1,6 @@
 /* global isGameOver, frameCount, totalServicePaid, totalInspectorPaid, score, bestScore, countdown, countdownActive, ctx, uiCtx, gameCanvas, uiCanvas, bg, denisImg, gameStarted */
 import { runner } from "./runner.js";
+import {isGameOver,GameOver} from "../main";
 
 export function update() {
     if (isGameOver) return;
@@ -8,6 +9,7 @@ export function update() {
 
 export function draw() {
     if (isGameOver) {
+        GameOver();
         // Show HTML Game Over overlay
         document.getElementById('gameOverScreen').style.display = 'block';
         document.getElementById('goScore').innerText = 'Ваш счет: ' + score;

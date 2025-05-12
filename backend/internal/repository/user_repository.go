@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"deniska_runner/internal/models"
 	"errors"
-	"fmt"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -113,7 +112,6 @@ func (u *userRepositoryDB) Login(ctx context.Context, username, password string)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(PasswordHash, []byte(password))
 	if err := bcrypt.CompareHashAndPassword(PasswordHash, []byte(password)); err != nil {
 		return nil, errors.New("invalid password")
 	}

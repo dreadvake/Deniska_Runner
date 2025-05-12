@@ -1,5 +1,4 @@
 node_modules/
-assets/*.mp3
 .envbot.py
 bot.py
 bot.py

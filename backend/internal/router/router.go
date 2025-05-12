@@ -14,9 +14,6 @@ func SetupRouter(
 ) *chi.Mux {
 	r := chi.NewRouter()
 
-	fileServer := http.FileServer(http.Dir("frontend"))
-	r.Handle("/*", fileServer)
-
 	r.Route("/api", func(r chi.Router) {
 
 		r.Use(middleware.CorsMiddleware)
@@ -33,6 +30,9 @@ func SetupRouter(
 		r.With(middleware.CorsMiddleware).Post("/logout", userHandler.LogoutUser)
 
 	})
+
+	fileServer := http.FileServer(http.Dir("frontend"))
+	r.Handle("/*", fileServer)
 
 	return r
 }
