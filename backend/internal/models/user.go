@@ -1,6 +1,8 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
 type User struct {
 	Name      string     `json:"name"`
@@ -14,4 +16,10 @@ type User struct {
 type UserLoginRequest struct {
 	Name     string `json:"username"`
 	Password string `json:"password"`
+}
+
+type UserLeaderboard struct {
+	ID     string `json:"id"`
+	Name   string `json:"user_name"`
+	Points Points `json:"points"`
 }

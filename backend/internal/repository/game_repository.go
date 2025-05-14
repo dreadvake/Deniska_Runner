@@ -8,7 +8,7 @@ import (
 
 type GameRepository interface {
 	Create(ctx context.Context, score *models.Score) error
-	GetLeaderboard(ctx context.Context, score *models.Score) ([]*models.User, error)
+	GetLeaderboard(ctx context.Context, score *models.Score) ([]*models.UserLeaderboard, error)
 	Update(ctx context.Context, score *models.Score) error
 	Delete(ctx context.Context, score *models.Score) error
 }
@@ -48,9 +48,10 @@ func (r *GameRepositoryDB) Create(ctx context.Context, score *models.Score) erro
 	return err
 }
 
-func (r *GameRepositoryDB) GetLeaderboard(ctx context.Context, score *models.Score) ([]*models.User, error) {
+func (r *GameRepositoryDB) GetLeaderboard(ctx context.Context, score *models.Score) ([]*models.UserLeaderboard, error) {
+	//Game := "runner"
 	const q = `
-		SELECT u.id, u.username, u.email, s.distance, s.money
+		SELECT u.id, u.username, s.distance, s.money
 		FROM users u
 		JOIN scores s ON u.id = s.user_id
 		WHERE s.game = $1
@@ -63,15 +64,14 @@ func (r *GameRepositoryDB) GetLeaderboard(ctx context.Context, score *models.Sco
 	}
 	defer rows.Close()
 
-	var users []*models.User
+	var users = make([]*models.UserLeaderboard, 0)
 	for rows.Next() {
-		user := &models.User{}
+		user := &models.UserLeaderboard{}
 		if err := rows.Scan(
 			&user.ID,
 			&user.Name,
-			&user.Email,
-			&score.Points.Distance,
-			&score.Points.Money,
+			&user.Points.Distance,
+			&user.Points.Money,
 		); err != nil {
 			return nil, err
 		}

@@ -99,8 +99,21 @@ function checkAuth() {
         window.location.href = '/auth.html';
         return false;
     }
+
+    // Если username ещё не сохранён, пробуем вытащить его из токена
+    if (!localStorage.getItem('username')) {
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            if (payload && payload.username) {
+                localStorage.setItem('username', payload.username);
+            }
+        } catch (e) {
+            console.warn('Не удалось декодировать токен', e);
+        }
+    }
     return true;
 }
+
 
 // Проверяем авторизацию при загрузке
 if (!checkAuth()) {
@@ -110,19 +123,14 @@ if (!checkAuth()) {
 
 // В функции gameOver или там, где заканчивается игра:
 export async function GameOver() {
-
+    console.log("сработало");
     // Сохраняем счет, если пользователь авторизован
+    let game = 'runner';
     const token = localStorage.getItem('token');
+    const username = localStorage.getItem('username');
     if (token) {
         try {
-            await api.saveScore({
-                game: 'runner',
-                user_name: localStorage.getItem('username'), // Сохраняем при логине
-                points: {
-                    distance: Math.floor(distanceTravelledPx / (160/3)),
-                    money: coinCount
-                }
-            });
+            await api.saveScore(game, distanceTravelledPx, coinCount, username);
         } catch (error) {
             console.error('Failed to save score:', error);
         }
@@ -260,6 +268,7 @@ function createRunner() {
 }
 
 export function resetGame() {
+
     // Show HUD overlays on restart
     document.getElementById('scoreDisplay').style.display = 'block';
     document.getElementById('bestDisplay').style.display  = 'block';
@@ -735,6 +744,7 @@ function update() {
         };
         if (rectsCollide(runnerHitbox, pitHitbox)) {
             isGameOver = true;
+            GameOver();
             if (bgMusic) bgMusic.pause();
             deathSfx.currentTime = 0;
             deathSfx.play();
@@ -768,6 +778,7 @@ function update() {
                 inspectorSfx.play();
             } else {
                 isGameOver = true;
+                GameOver();
                 if (bgMusic) bgMusic.pause();
                 deathSfx.currentTime = 0;
                 deathSfx.play();
@@ -792,6 +803,7 @@ function update() {
                 serviceSfx.play();
             } else {
                 isGameOver = true;
+                GameOver();
                 if (bgMusic) bgMusic.pause();
                 deathSfx.currentTime = 0;
                 deathSfx.play();
@@ -804,6 +816,7 @@ function update() {
     checks.forEach((ch, i) => {
         if (rectsCollide(runnerHitbox, ch)) {
             isGameOver = true;
+            GameOver();
             if (bgMusic) bgMusic.pause();
             checkSfx.currentTime = 0;
             checkSfx.play();
@@ -866,6 +879,7 @@ function draw() {
 
     // Game Over UI block
     if (isGameOver) {
+
         // Скрываем надписи слева сверху при Game Over
         const scoreEl = document.getElementById('scoreDisplay');
         if (scoreEl) scoreEl.style.display = 'none';
@@ -1196,7 +1210,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (e.target === restartBtn) {
                     gameStarted = false;
                     isGameOver = false;
-                    GameOver();
                     resetGame();
                     initGame();
                 }
@@ -1210,7 +1223,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 restartBtn.addEventListener('click', function () {
                     gameStarted = false;
                     isGameOver = false;
-                    GameOver();
                     resetGame();
                     initGame();
                 });

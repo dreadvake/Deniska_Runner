@@ -9,7 +9,7 @@ import (
 
 type GameServicer interface {
 	SaveScore(ctx context.Context, score *models.Score) error
-	GetLeaderboard(ctx context.Context, game string) ([]*models.User, error)
+	GetLeaderboard(ctx context.Context, game string) ([]*models.UserLeaderboard, error)
 }
 
 type GameService struct {
@@ -27,7 +27,7 @@ func (s *GameService) SaveScore(ctx context.Context, score *models.Score) error 
 	return s.repo.Create(ctx, score)
 }
 
-func (s *GameService) GetLeaderboard(ctx context.Context, game string) ([]*models.User, error) {
+func (s *GameService) GetLeaderboard(ctx context.Context, game string) ([]*models.UserLeaderboard, error) {
 	if game == "" {
 		return nil, errors.New("game is required")
 	}

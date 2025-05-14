@@ -56,7 +56,7 @@ export const api = {
     //     return response.json();
     // },
 
-    async saveScore(score) {
+    async saveScore(game, distanceTravelledPx, coinCount, username) {
         const token = localStorage.getItem('token');
         const response = await fetch(`${API_URL}/score`, {
             method: 'POST',
@@ -64,7 +64,14 @@ export const api = {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`,
             },
-            body: JSON.stringify(score),
+            body: JSON.stringify({
+                game: game,
+                user_name: username, // Сохраняем при логине
+                points: {
+                    distance: Math.floor(distanceTravelledPx / (160/3)),
+                    money: coinCount
+                }
+            }),
         });
         if (!response.ok) throw new Error('Failed to save score');
         return response.json();
