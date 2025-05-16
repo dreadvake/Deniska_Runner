@@ -67,10 +67,9 @@ export const api = {
             body: JSON.stringify({
                 game: game,
                 user_name: username, // Сохраняем при логине
-                points: {
-                    distance: Math.floor(distanceTravelledPx / (160/3)),
-                    money: coinCount
-                }
+                distance: Math.floor(distanceTravelledPx / (160/3)),
+                money: coinCount
+
             }),
         });
         if (!response.ok) throw new Error('Failed to save score');

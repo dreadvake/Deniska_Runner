@@ -22,9 +22,10 @@ func NewGameRepositoryDB(db *sql.DB) *GameRepositoryDB {
 }
 
 func (r *GameRepositoryDB) getUserID(ctx context.Context, username string) (string, error) {
-	const q = `SELECT id FROM users WHERE username = $1`
 	var id string
-	if err := r.db.QueryRowContext(ctx, q, username).Scan(&id); err != nil {
+	if err := r.db.QueryRowContext(ctx,
+		`SELECT id FROM users WHERE username = $1`,
+		username).Scan(&id); err != nil {
 		return "", err
 	}
 	return id, nil
@@ -36,29 +37,53 @@ func (r *GameRepositoryDB) Create(ctx context.Context, score *models.Score) erro
 		return err
 	}
 
-	const q = `
-		INSERT INTO scores (user_id, game, distance, money)
-		VALUES ($1, $2, $3, $4)	`
-	_, err = r.db.ExecContext(ctx, q,
-		userID,
-		score.Game,
-		score.Points.Distance,
-		score.Points.Money,
-	)
+	var distance int
+	if err := r.db.QueryRowContext(ctx,
+		`Select distance from scores where user_id = $1 and game = $2`,
+		userID, score.Game).Scan(&distance); err == nil {
+		if distance > score.Distance {
+			return nil
+		}
+
+	}
+	if distance == 0 {
+		_, err = r.db.ExecContext(ctx,
+			`INSERT INTO scores (user_id, game, distance, money)
+				VALUES ($1, $2, $3, $4)	`,
+			userID,
+			score.Game,
+			score.Distance,
+			score.Money,
+		)
+	}
+
+	if distance < score.Distance {
+		_, err = r.db.ExecContext(ctx,
+			`UPDATE scores
+			SET distance = $1, money = $2,
+			    updated_at = CURRENT_TIMESTAMP
+			    WHERE user_id = $3 AND game = $4`,
+			score.Distance,
+			score.Money,
+			userID,
+			score.Game,
+		)
+	}
+
 	return err
 }
 
 func (r *GameRepositoryDB) GetLeaderboard(ctx context.Context, score *models.Score) ([]*models.UserLeaderboard, error) {
 	//Game := "runner"
-	const q = `
-		SELECT u.id, u.username, s.distance, s.money
+
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT u.id, u.username, s.distance, s.money
 		FROM users u
 		JOIN scores s ON u.id = s.user_id
 		WHERE s.game = $1
 		ORDER BY s.distance DESC, s.money DESC
-		LIMIT 10
-	`
-	rows, err := r.db.QueryContext(ctx, q, score.Game)
+		LIMIT 10`,
+		score.Game)
 	if err != nil {
 		return nil, err
 	}
@@ -70,8 +95,8 @@ func (r *GameRepositoryDB) GetLeaderboard(ctx context.Context, score *models.Sco
 		if err := rows.Scan(
 			&user.ID,
 			&user.Name,
-			&user.Points.Distance,
-			&user.Points.Money,
+			&user.Distance,
+			&user.Money,
 		); err != nil {
 			return nil, err
 		}
@@ -85,14 +110,12 @@ func (r *GameRepositoryDB) Update(ctx context.Context, score *models.Score) erro
 	if err != nil {
 		return err
 	}
-	const q = `
-		UPDATE scores
+	_, err = r.db.ExecContext(ctx,
+		`UPDATE scores
 		SET distance = $1, money = $2
-		WHERE user_id = $3 AND game = $4
-	`
-	_, err = r.db.ExecContext(ctx, q,
-		score.Points.Distance,
-		score.Points.Money,
+		WHERE user_id = $3 AND game = $4`,
+		score.Distance,
+		score.Money,
 		userID,
 		score.Game,
 	)
@@ -104,10 +127,9 @@ func (r *GameRepositoryDB) Delete(ctx context.Context, score *models.Score) erro
 	if err != nil {
 		return err
 	}
-	const q = `
-		DELETE FROM scores
-		WHERE user_id = $1 AND game = $2
-	`
-	_, err = r.db.ExecContext(ctx, q, userID, score.Game)
+	_, err = r.db.ExecContext(ctx,
+		`DELETE FROM scores
+		WHERE user_id = $1 AND game = $2`,
+		userID, score.Game)
 	return err
 }

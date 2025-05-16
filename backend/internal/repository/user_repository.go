@@ -29,11 +29,10 @@ func (u *userRepositoryDB) Create(ctx context.Context, user *models.User) error 
 	if err != nil {
 		return err
 	}
-	query := `
-		INSERT INTO users (username, email, password, created_at, updated_at) 
+	err = u.db.QueryRowContext(ctx,
+		`INSERT INTO users (username, email, password, created_at, updated_at) 
 		VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-		RETURNING id, created_at, updated_at`
-	err = u.db.QueryRowContext(ctx, query,
+		RETURNING id, created_at, updated_at`,
 		user.Name,
 		user.Email,
 		string(hashedPassword)).
@@ -66,12 +65,11 @@ func (u *userRepositoryDB) Update(ctx context.Context, user *models.User) error 
 		}
 		PasswordHash = currentPassword
 	}
-	query := `
-		UPDATE users 
+	result, err := u.db.ExecContext(ctx,
+		`UPDATE users 
 		SET username = $1, email = $2, password = $3,
 		updated_at = CURRENT_TIMESTAMP
-		WHERE ID = $4`
-	result, err := u.db.ExecContext(ctx, query,
+		WHERE ID = $4`,
 		user.Name, user.Email, PasswordHash, user.ID)
 
 	if err != nil {
@@ -85,8 +83,7 @@ func (u *userRepositoryDB) Update(ctx context.Context, user *models.User) error 
 }
 
 func (u *userRepositoryDB) Delete(ctx context.Context, username string) error {
-	query := `DELETE FROM users WHERE username = $1`
-	result, err := u.db.ExecContext(ctx, query, username)
+	result, err := u.db.ExecContext(ctx, `DELETE FROM users WHERE username = $1`, username)
 	if err != nil {
 		return err
 	}
@@ -100,11 +97,11 @@ func (u *userRepositoryDB) Delete(ctx context.Context, username string) error {
 func (u *userRepositoryDB) Login(ctx context.Context, username, password string) (*models.User, error) {
 	var user models.User
 	var PasswordHash []byte
-	query := `
-		SELECT id, username, email, password
+	err := u.db.QueryRowContext(ctx,
+		`SELECT id, username, email, password
 		FROM users 
-		WHERE username = $1`
-	err := u.db.QueryRowContext(ctx, query, username).
+		WHERE username = $1`,
+		username).
 		Scan(&user.ID, &user.Name, &user.Email, &PasswordHash)
 	if err == sql.ErrNoRows {
 		return nil, errors.New("user not found")

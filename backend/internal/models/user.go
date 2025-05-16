@@ -19,7 +19,8 @@ type UserLoginRequest struct {
 }
 
 type UserLeaderboard struct {
-	ID     string `json:"id"`
-	Name   string `json:"user_name"`
-	Points Points `json:"points"`
+	ID       string `json:"id"`
+	Name     string `json:"user_name"`
+	Distance int    `json:"distance"`
+	Money    int    `json:"money"`
 }
